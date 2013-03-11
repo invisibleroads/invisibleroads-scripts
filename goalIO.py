@@ -29,17 +29,18 @@ class GoalFactory(object):
 
 class Goal(object):
 
-    def __init__(self, text, status=STATUS_PENDING, start=None, end=None, whenIO=None):
+    def __init__(self, text, status=STATUS_PENDING, start=None, end=None, whenIO=None, inUTC=False):
         self.text = text
         self.status = status
         self.start = start
         self.end = end
         self.whenIO = whenIO or WhenIO()
+        self.inUTC = inUTC
 
     def format(self, template='%(statusSymbol)s %(text)s [%(whens)s]', withStartDate=True):
         valueByKey = dict(self.__dict__,
                           statusSymbol=STATUS_CHARACTERS[self.status],
-                          whens=self.whenIO.format([self.start, self.end], withStartDate=withStartDate))
+                          whens=self.whenIO.format([self.start, self.end], withStartDate=withStartDate, fromUTC=self.inUTC))
         return template % valueByKey
 
 
