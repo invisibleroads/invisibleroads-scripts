@@ -18,10 +18,9 @@ def run(sourcePaths, showAll=False, dayCount=0):
     lines = []
     goals = filter(lambda _: _.start, goals)
     template = '%(when_)s\t%(text)s'
-    if dayCount is not None:
-        timeDelta = datetime.timedelta(days=dayCount + 1)
-        timeLimit = whenIO._combine_date_time(whenIO._today + timeDelta)
-        goals = filter(lambda _: _.start < timeLimit, goals)
+    timeDelta = datetime.timedelta(days=dayCount + 1)
+    timeLimit = whenIO._combine_date_time(whenIO._today + timeDelta)
+    goals = filter(lambda _: _.start < timeLimit, goals)
     if not showAll:
         goals = filter(lambda _: _.status < STATUS_DONE, goals)
     else:
@@ -30,10 +29,12 @@ def run(sourcePaths, showAll=False, dayCount=0):
     for goal in sorted(goals, key=lambda _: _.start):
         if currentDate != goal.start.date():
             if currentDate:
-                lines.append('\n')
+                lines.append('')
             currentDate = goal.start.date()
             lines.append(whenIO.format_date(currentDate))
         lines.append(goal.format(template, omitStartDate=True))
+    if not lines:
+        return 'Whoops! No goals scheduled until %s.' % whenIO.format(timeLimit, fromUTC=False)
     return '\n'.join(lines)
 
 
