@@ -71,10 +71,10 @@ class Goal(object):
         else:
             return '<Goal>'
 
-    def format(self, template='%(status)s%(text)s%(when)s', omitStartDate=False):
+    def format(self, template='%(status)s%(text)s%(when)s', omitStartDate=False, whenIO=None):
         leadspace = ' ' * self.level
         status = STATUS_CHARACTERS[self.status] + ' ' if self.status > STATUS_PENDING else ''
-        when_ = self.whenIO.format(
+        when_ = (whenIO or self.whenIO).format(
             timestamps=[self.start, self.end],
             omitStartDate=omitStartDate,
             forceDate=True,

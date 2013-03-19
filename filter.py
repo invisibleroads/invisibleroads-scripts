@@ -5,6 +5,7 @@ import shutil
 import sys
 from tempfile import mkstemp
 from tzlocal import get_localzone
+from whenIO import WhenIO
 
 from goalIO import GoalFactory, load_whenIO, STATUS_DONE
 
@@ -15,16 +16,17 @@ def run(sourcePaths, showAll, overwriteFirst=False):
         sys.stdout = open(temporaryPath, 'wt')
     now = datetime.datetime.now()
     print '# %s %s' % (get_localzone(), now.strftime('%-m/%-d/%Y'))
+    whenIO = WhenIO(today=now)
     for sourcePath in sourcePaths:
         with open(sourcePath) as sourceFile:
-            whenIO = load_whenIO(sourceFile)
-            goalFactory = GoalFactory(whenIO)
+            goalFactory = GoalFactory(load_whenIO(sourceFile))
             for line in sourceFile:
                 goal = goalFactory.parse_line(line)
                 if goal.status == STATUS_DONE and not goal.start:
                     goal.start = now
                 if showAll or goal.status < STATUS_DONE:
-                    print goal.format('%(leadspace)s%(status)s%(text)s%(when)s')
+                    template = '%(leadspace)s%(status)s%(text)s%(when)s'
+                    print goal.format(template, whenIO=whenIO)
     if overwriteFirst:
         shutil.move(temporaryPath, sourcePaths[0])
 
