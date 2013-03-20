@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse
 import datetime
+from whenIO import WhenIO
 
 from goalIO import GoalFactory, load_whenIO, STATUS_DONE
 
@@ -10,11 +11,11 @@ def run(sourcePaths, showAll=False, dayCount=0):
     # Parse
     for sourcePath in sourcePaths:
         with open(sourcePath) as sourceFile:
-            whenIO = load_whenIO(sourceFile)
-            goalFactory = GoalFactory(whenIO)
+            goalFactory = GoalFactory(load_whenIO(sourceFile))
             for line in sourceFile:
                 goals.append(goalFactory.parse_line(line))
     # Output in chronological order
+    whenIO = WhenIO()
     lines = []
     goals = filter(lambda _: _.start, goals)
     template = '%(when_)s\t%(text)s'
