@@ -28,6 +28,7 @@ def run(sourcePaths, showAll, overwriteFirst=False):
                     template = '%(leadspace)s%(status)s%(text)s%(when)s'
                     print goal.format(template, whenIO=whenIO)
     if overwriteFirst:
+        sys.stdout.flush()
         shutil.move(temporaryPath, sourcePaths[0])
 
 
