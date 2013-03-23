@@ -23,17 +23,18 @@ def run(sourcePaths, showAll=False, dayCount=0, timezone=None):
     template = '%(when_)s\t%(text)s'
     timeDelta = datetime.timedelta(days=dayCount + 1)
     timeLimit = targetWhenIO._combine_date_time(targetWhenIO._today + timeDelta)
-    goals = filter(lambda _: _.start < timeLimit, goals)
+    goals = filter(lambda _: targetWhenIO._to_local(_.start) < timeLimit, goals)
     if not showAll:
         goals = filter(lambda _: _.status < STATUS_DONE, goals)
     else:
         template = '%(statusSymbol)s ' + template
     currentDate = None
     for goal in sorted(goals, key=lambda _: _.start):
-        if currentDate != goal.start.date():
+        start = targetWhenIO._to_local(goal.start)
+        if currentDate != start.date():
             if currentDate:
                 lines.append('')
-            currentDate = goal.start.date()
+            currentDate = start.date()
             lines.append(targetWhenIO.format_date(currentDate))
         lines.append(goal.format(template, omitStartDate=True, whenIO=targetWhenIO))
     if not lines:
