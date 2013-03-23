@@ -13,19 +13,20 @@ INDENT_UNIT = '    '
 
 class GoalFactory(object):
 
-    def __init__(self, whenIO=None):
+    def __init__(self, whenIO=None, inUTC=True):
         self.whenIO = whenIO or WhenIO()
+        self.inUTC = inUTC
 
     def parse_line(self, text):
         # Extract
         text, leadspace = extract_leadspace(text)
         text, status = extract_status(text)
-        text, start, end = extract_when(text, self.whenIO)
+        text, start, end = extract_when(text, self.whenIO, self.inUTC)
         # Reduce
         text = PATTERN_WHITESPACE.sub(' ', text).strip()
         level = len(leadspace)
         # Assemble
-        return Goal(text, status, level, start, end, self.whenIO)
+        return Goal(text, status, level, start, end, self.whenIO, self.inUTC)
 
     def parse_hierarchy(self, lines):
         lineage = [Goal()]
@@ -49,7 +50,7 @@ class GoalFactory(object):
 class Goal(object):
 
     def __init__(self, text='', status=STATUS_PENDING, level=0,
-                 start=None, end=None, whenIO=None, inUTC=False):
+                 start=None, end=None, whenIO=None, inUTC=True):
         # Set parameters
         self.text = text
         self.status = status
@@ -124,14 +125,14 @@ def extract_status(text):
         return text, STATUS_CHARACTERS.index(symbol)
 
 
-def extract_when(text, whenIO):
+def extract_when(text, whenIO, toUTC=True):
     start, end = None, None
     matches = PATTERN_WHEN.findall(text)
     if matches:
         # Remove matches from text
         text = PATTERN_WHEN.sub('', text)
         # Parse
-        timestamps = whenIO.parse(' '.join(matches).lower(), toUTC=False)[0]
+        timestamps = whenIO.parse(' '.join(matches).lower(), toUTC=toUTC)[0]
         if timestamps:
             start = timestamps[0]
             if len(timestamps) > 1:

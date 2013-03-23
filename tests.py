@@ -20,7 +20,7 @@ TEXT = """\
 class TestGoalFactory(TestCase):
 
     def setUp(self):
-        self.goalFactory = GoalFactory()
+        self.goalFactory = GoalFactory(inUTC=False)
 
     def test_parse_line(self):
         def expect(line, text, start, end):
