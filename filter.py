@@ -16,7 +16,9 @@ def run(sourcePaths, showAll, overwriteFirst=False, timezone=None):
         sys.stdout = open(temporaryPath, 'wt')
     utcnow = datetime.datetime.utcnow()
     targetWhenIO = WhenIO(timezone=timezone)
-    print '# %s %s' % (targetWhenIO._tz.zone, targetWhenIO._today.strftime('%-m/%-d/%Y'))
+    print '# %s %s' % (
+        targetWhenIO._tz.zone,
+        targetWhenIO._today.strftime('%-m/%-d/%Y'))
     for sourcePath in sourcePaths:
         with open(sourcePath) as sourceFile:
             sourceWhenIO = load_whenIO(sourceFile)
@@ -48,4 +50,8 @@ if __name__ == '__main__':
         '-t', '--timezone', metavar='TZ', default=get_localzone().zone,
         help='specify target timezone')
     arguments = argumentParser.parse_args()
-    run(arguments.sourcePaths, arguments.all, arguments.update, arguments.timezone)
+    run(
+        arguments.sourcePaths,
+        arguments.all,
+        arguments.update,
+        arguments.timezone)
