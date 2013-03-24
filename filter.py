@@ -14,6 +14,7 @@ def run(sourcePaths, showAll, overwriteFirst=False, timezone=None):
     if overwriteFirst:
         temporaryPath = mkstemp()[1]
         sys.stdout = open(temporaryPath, 'wt')
+    utcnow = datetime.datetime.utcnow()
     targetWhenIO = WhenIO(timezone=timezone)
     print '# %s %s' % (targetWhenIO._tz.zone, targetWhenIO._today.strftime('%-m/%-d/%Y'))
     for sourcePath in sourcePaths:
@@ -23,7 +24,7 @@ def run(sourcePaths, showAll, overwriteFirst=False, timezone=None):
             for line in sourceFile:
                 goal = goalFactory.parse_line(line)
                 if goal.status == STATUS_DONE and not goal.start:
-                    goal.start = now
+                    goal.start = utcnow
                 if showAll or goal.status < STATUS_DONE:
                     template = '%(leadspace)s%(status)s%(text)s%(when)s'
                     print goal.format(template, whenIO=targetWhenIO)
