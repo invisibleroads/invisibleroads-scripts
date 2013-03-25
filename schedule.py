@@ -38,7 +38,8 @@ def run(sourcePaths, showAll=False, dayCount=0, timezone=None):
             lines.append(targetWhenIO.format_date(currentDate))
         lines.append(goal.format(template, omitStartDate=True, whenIO=targetWhenIO))
     if not lines:
-        return 'Whoops! No goals scheduled until %s.' % targetWhenIO.format(timeLimit)
+        return 'Whoops! No goals scheduled until %s.' % targetWhenIO.format(
+            timeLimit, fromUTC=False)
     return '\n'.join(lines)
 
 
