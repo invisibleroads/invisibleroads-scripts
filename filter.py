@@ -38,7 +38,7 @@ def run(sourcePaths, showAll, overwriteFirst=False, timezone=None):
 if __name__ == '__main__':
     argumentParser = argparse.ArgumentParser()
     argumentParser.add_argument(
-        'sourcePaths', nargs='+', default='*.goals',
+        'sourcePaths', nargs='+',
         help='text files with goals in hierarchical order')
     argumentParser.add_argument(
         '-a', '--all', action='store_true',

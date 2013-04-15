@@ -57,7 +57,7 @@ def format_lineage(goal):
 if __name__ == '__main__':
     argumentParser = argparse.ArgumentParser()
     argumentParser.add_argument(
-        'sourcePaths', nargs='+', default='*.goals',
+        'sourcePaths', nargs='+',
         help='text files with goals in hierarchical order')
     arguments = argumentParser.parse_args()
     run(arguments.sourcePaths)
