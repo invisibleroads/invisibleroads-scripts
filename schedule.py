@@ -2,6 +2,7 @@
 import datetime
 import sys
 from collections import defaultdict
+from dateutil.relativedelta import relativedelta
 from whenIO import WhenIO
 
 from goalIO import GoalFactory, load_whenIO, STATUS_DONE
@@ -78,8 +79,8 @@ def format_schedule(goals, template, whenIO):
 
 def overlap(goal1, goal2):
     latestStart = max(goal1.start, goal2.start)
-    earliestEnd = min(goal1.start + goal1.duration,
-                      goal2.start + goal2.duration)
+    earliestEnd = min(goal1.start + goal1.duration or relativedelta(),
+                      goal2.start + goal2.duration or relativedelta()
     overlapInSeconds = (earliestEnd - latestStart).total_seconds() + 1
     return overlapInSeconds > 0
 
