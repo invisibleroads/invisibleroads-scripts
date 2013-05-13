@@ -1,5 +1,6 @@
 import re
-from whenIO import WhenIO
+from dateutil.relativedelta import relativedelta
+from whenIO import WhenIO, parse_duration, format_duration
 
 
 STATUS_PENDING, STATUS_NEXT, STATUS_DONE, STATUS_CANCELLED = xrange(4)
@@ -9,6 +10,7 @@ PATTERN_STATUS = re.compile(r'([%s])(.*)' % STATUS_CHARACTERS)
 PATTERN_WHEN = re.compile(r'\[([^\]]*)\]')
 PATTERN_WHITESPACE = re.compile(r'\s+')
 INDENT_UNIT = '    '
+GOAL_TEMPLATE = '%(status)s%(text)s%(when)s'
 
 
 class GoalFactory(object):
@@ -21,12 +23,19 @@ class GoalFactory(object):
         # Extract
         text, leadspace = extract_leadspace(text)
         text, status = extract_status(text)
-        text, start, end = extract_when(text, self.whenIO, self.inUTC)
+        text, start, duration = extract_when(text, self.whenIO, self.inUTC)
         # Reduce
         text = PATTERN_WHITESPACE.sub(' ', text).strip()
         level = len(leadspace)
         # Assemble
-        return Goal(text, status, level, start, end, self.whenIO, self.inUTC)
+        return Goal(
+            text,
+            status,
+            level,
+            start,
+            duration,
+            self.whenIO,
+            self.inUTC)
 
     def parse_hierarchy(self, lines):
         lineage = [Goal()]
@@ -50,13 +59,13 @@ class GoalFactory(object):
 class Goal(object):
 
     def __init__(self, text='', status=STATUS_PENDING, level=0,
-                 start=None, end=None, whenIO=None, inUTC=True):
+                 start=None, duration=None, whenIO=None, inUTC=True):
         # Set parameters
         self.text = text
         self.status = status
         self.level = level
         self.start = start
-        self.end = end
+        self.duration = duration
         self.whenIO = whenIO or WhenIO()
         self.inUTC = inUTC
         # Set variables
@@ -72,20 +81,28 @@ class Goal(object):
         else:
             return '<Goal>'
 
-    def format(self, template='%(status)s%(text)s%(when)s', omitStartDate=False, whenIO=None):
+    def format(self, template=GOAL_TEMPLATE, omitStartDate=False, whenIO=None):
         leadspace = ' ' * self.level
-        status = STATUS_CHARACTERS[self.status] + ' ' if self.status > STATUS_PENDING else ''
-        when_ = (whenIO or self.whenIO).format(
-            timestamps=[self.start, self.end],
+        if self.status > STATUS_PENDING:
+            status = STATUS_CHARACTERS[self.status] + ' '
+        else:
+            status = ''
+        time = (whenIO or self.whenIO).format(
+            self.start,
             omitStartDate=omitStartDate,
-            forceDate=True,
             fromUTC=self.inUTC)
-        when = ' [%s]' % when_ if self.start else ''
+        duration = format_duration(
+            self.duration, 
+            style='letters', 
+            rounding='ceiling')
+        whenString = (time + ' ' + duration).strip()
+        when = ' [%s]' % whenString if whenString else ''
         return template % dict(
             self.__dict__,
             leadspace=leadspace,
             status=status,
-            when_=when_,
+            time=time,
+            duration=duration,
             when=when)
 
     @property
@@ -126,18 +143,23 @@ def extract_status(text):
 
 
 def extract_when(text, whenIO, toUTC=True):
-    start, end = None, None
+    start = None
+    duration = relativedelta()
     matches = PATTERN_WHEN.findall(text)
     if matches:
         # Remove matches from text
         text = PATTERN_WHEN.sub('', text)
         # Parse
-        timestamps = whenIO.parse(' '.join(matches).lower(), toUTC=toUTC)[0]
+        whenString = ' '.join(matches).lower()
+        timestamps, terms = whenIO.parse(whenString, toUTC=toUTC)
+        duration = parse_duration(' '.join(terms))
         if timestamps:
             start = timestamps[0]
             if len(timestamps) > 1:
                 end = timestamps[-1]
-    return text, start, end
+                timedelta = end - start
+                duration = relativedelta(seconds=timedelta.total_seconds())
+    return text, start, duration
 
 
 def load_whenIO(sourceFile):

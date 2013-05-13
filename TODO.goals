@@ -1,3 +1,6 @@
-Update to Python 3
-Omit special dates when filtering
-Consider how to configure default timezone
+# America/Los_Angeles 5/10/2013
+= Count goals that are missing duration [15m]
+Count goals that are not scheduled [15m]
+    Add scheduling conflict detection [15m]
+Output warnings to stderr [10m]
+Update to Python 3 [2h]

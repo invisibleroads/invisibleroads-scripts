@@ -1,4 +1,5 @@
 from datetime import datetime
+from dateutil.relativedelta import relativedelta
 from unittest import TestCase
 
 from goalIO import GoalFactory
@@ -23,16 +24,21 @@ class TestGoalFactory(TestCase):
         self.goalFactory = GoalFactory(inUTC=False)
 
     def test_parse_line(self):
-        def expect(line, text, start, end):
+        def expect(line, text, start, duration):
             goal = self.goalFactory.parse_line(line)
             self.assertEqual(goal.text, text)
             self.assertEqual(goal.start, start)
-            self.assertEqual(goal.end, end)
+            self.assertEqual(goal.duration, duration)
         expect(
             'be  free  [1/1/2000 12am 1am]',
             text='be free',
             start=datetime(2000, 1, 1),
-            end=datetime(2000, 1, 1, 1))
+            duration=relativedelta(hours=1))
+        expect(
+            'run [30m]',
+            text='run',
+            start=None,
+            duration=relativedelta(minutes=30))
 
     def test_parse_hierarchy(self):
         roots = self.goalFactory.parse_hierarchy(TEXT.splitlines())

@@ -1,8 +1,13 @@
 #!/usr/bin/env python
-import argparse
 import sys
 
-from goalIO import GoalFactory, GoalError, load_whenIO, STATUS_NEXT, INDENT_UNIT
+from goalIO import (
+    GoalFactory,
+    GoalError,
+    load_whenIO,
+    STATUS_NEXT,
+    INDENT_UNIT)
+from script import get_argumentParser
 
 
 def run(sourcePaths):
@@ -14,13 +19,14 @@ def run(sourcePaths):
             try:
                 check_goals(roots)
             except GoalError, error:
-                print error
+                sys.stderr.write(error)
                 sys.exit(-1)
             goal = get_next_step(roots)
             if goal:
-                print format_lineage(goal)
+                sys.stdout.write(format_lineage(goal))
             else:
-                print 'Whoops! We could not pinpoint the next step.'
+                error = 'Whoops! We could not pinpoint the next step.'
+                sys.stderr.write(error)
 
 
 def check_goals(goals):
@@ -50,14 +56,11 @@ def format_lineage(goal):
     while goal.parent:
         lineage.append(goal.parent)
         goal = goal.parent
-    template = '%(leadspace)s%(text)s'
+    template = '%(leadspace)s%(text)s%(when)s'
     return '\n'.join(_.format(template) for _ in reversed(lineage))
 
 
 if __name__ == '__main__':
-    argumentParser = argparse.ArgumentParser()
-    argumentParser.add_argument(
-        'sourcePaths', nargs='+',
-        help='text files with goals in hierarchical order')
+    argumentParser = get_argumentParser()
     arguments = argumentParser.parse_args()
     run(arguments.sourcePaths)
