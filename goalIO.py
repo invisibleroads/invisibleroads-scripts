@@ -144,7 +144,7 @@ def extract_status(text):
 
 def extract_when(text, whenIO, toUTC=True):
     start = None
-    duration = relativedelta()
+    duration = None
     matches = PATTERN_WHEN.findall(text)
     if matches:
         # Remove matches from text
@@ -157,8 +157,9 @@ def extract_when(text, whenIO, toUTC=True):
             start = timestamps[0]
             if len(timestamps) > 1:
                 end = timestamps[-1]
-                timedelta = end - start
-                duration = relativedelta(seconds=timedelta.total_seconds())
+                seconds = (end - start).total_seconds()
+                if seconds:
+                    duration = relativedelta(seconds=seconds)
     return text, start, duration
 
 

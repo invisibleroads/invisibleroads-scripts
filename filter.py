@@ -15,9 +15,9 @@ def run(sourcePaths, showAll, overwriteFirst=False, timezone=None):
         sys.stdout = open(temporaryPath, 'wt')
     utcnow = datetime.datetime.utcnow()
     targetWhenIO = WhenIO(timezone=timezone)
-    print '# %s %s' % (
+    print('# %s %s' % (
         targetWhenIO._tz.zone,
-        targetWhenIO._today.strftime('%-m/%-d/%Y'))
+        targetWhenIO._today.strftime('%-m/%-d/%Y')))
     for sourcePath in sourcePaths:
         with open(sourcePath) as sourceFile:
             sourceWhenIO = load_whenIO(sourceFile)
@@ -28,7 +28,7 @@ def run(sourcePaths, showAll, overwriteFirst=False, timezone=None):
                     goal.start = utcnow
                 if showAll or goal.status < STATUS_DONE:
                     template = '%(leadspace)s%(status)s%(text)s%(when)s'
-                    print goal.format(template, whenIO=targetWhenIO)
+                    print(goal.format(template, whenIO=targetWhenIO))
     if overwriteFirst:
         sys.stdout.flush()
         shutil.move(temporaryPath, sourcePaths[0])

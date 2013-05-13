@@ -11,6 +11,8 @@ from script import get_argumentParser
 
 
 def run(sourcePaths):
+    print_line = lambda _: sys.stdout.write(_ + '\n')
+    print_error = lambda _: sys.stderr.write(_ + '\n')
     for sourcePath in sourcePaths:
         with open(sourcePath) as sourceFile:
             whenIO = load_whenIO(sourceFile)
@@ -19,14 +21,13 @@ def run(sourcePaths):
             try:
                 check_goals(roots)
             except GoalError, error:
-                sys.stderr.write(error)
+                print_error(error)
                 sys.exit(-1)
             goal = get_next_step(roots)
             if goal:
-                sys.stdout.write(format_lineage(goal))
+                print_line(format_lineage(goal))
             else:
-                error = 'Whoops! We could not pinpoint the next step.'
-                sys.stderr.write(error)
+                print_error('Whoops! We could not pinpoint the next step.')
 
 
 def check_goals(goals):
