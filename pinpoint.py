@@ -21,7 +21,7 @@ def run(sourcePaths):
             try:
                 check_goals(roots)
             except GoalError, error:
-                print_error(error)
+                print_error(str(error))
                 sys.exit(-1)
             goal = get_next_step(roots)
             if goal:
