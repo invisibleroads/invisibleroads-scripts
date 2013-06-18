@@ -7,7 +7,7 @@ from goalIO import (
     load_whenIO,
     STATUS_NEXT,
     INDENT_UNIT)
-from script import get_argumentParser
+from script import get_argumentParser, get_args
 
 
 def run(sourcePaths):
@@ -63,5 +63,5 @@ def format_lineage(goal):
 
 if __name__ == '__main__':
     argumentParser = get_argumentParser()
-    arguments = argumentParser.parse_args()
-    run(arguments.sourcePaths)
+    args = get_args(argumentParser)
+    run(args.sourcePaths)

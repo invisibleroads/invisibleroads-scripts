@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 import datetime
+import os
+import pytz
 import sys
 from collections import defaultdict
 from dateutil.relativedelta import relativedelta
 from whenIO import WhenIO
 
 from goalIO import GoalFactory, load_whenIO, STATUS_DONE
-from script import get_argumentParser
+from script import get_argumentParser, get_args, APPLICATION_NAME, CONFIG_NAME
 
 
 def run(sourcePaths, dayCount, timezone):
@@ -14,20 +16,30 @@ def run(sourcePaths, dayCount, timezone):
     targetWhenIO = WhenIO(timezone)
     # Parse
     for sourcePath in sourcePaths:
+        calendarName = get_calendarName(sourcePath)
         with open(sourcePath) as sourceFile:
             sourceWhenIO = load_whenIO(sourceFile)
             goalFactory = GoalFactory(sourceWhenIO)
             for line in sourceFile:
-                goals.append(goalFactory.parse_line(line))
-    # Filter
+                goal = goalFactory.parse_line(line)
+                goal.calendar = calendarName
+                goals.append(goal)
     goals, warnings = filter_goals(goals, dayCount, targetWhenIO)
     # Format
     template = '%(time)s\t%(duration)s\t%(text)s'
     lines = format_schedule(goals, template, targetWhenIO)
     if lines:
         sys.stdout.write('\n'.join(lines) + '\n')
-    # Analyze
     sys.stderr.write('\n'.join(warnings) + '\n')
+    return goals
+
+
+def get_calendarName(filePath):
+    calendarName = os.path.splitext(filePath)[0]
+    if 'todo' == calendarName.lower():
+        folderPath = os.path.dirname(os.path.abspath(filePath))
+        calendarName = os.path.basename(folderPath)
+    return calendarName
 
 
 def filter_goals(goals, dayCount, whenIO):
@@ -84,12 +96,73 @@ def overlap(goal1, goal2):
     return (earliestEnd - latestStart).total_seconds() > 0
 
 
+def get_service(configFolder, clientId, clientSecret, developerKey):
+    from apiclient.discovery import build
+    from httplib2 import Http
+    from oauth2client.client import OAuth2WebServerFlow
+    from oauth2client.file import Storage
+    from oauth2client.tools import run as run_
+
+    flow = OAuth2WebServerFlow(
+        client_id=clientId, client_secret=clientSecret,
+        scope='https://www.googleapis.com/auth/calendar',
+        user_agent=APPLICATION_NAME)
+    storagePath = os.path.join(configFolder, 'calendar.json')
+    storage = Storage(storagePath)
+    credentials = storage.get()
+    if not credentials or credentials.invalid:
+        credentials = run_(flow, storage)
+    return build(
+        serviceName='calendar', version='v3',
+        http=credentials.authorize(Http()), developerKey=developerKey)
+
+
+def synchronize(service, goals):
+    idByName = make_calendars(set(x.calendar for x in goals))
+    # Create events
+    isoformat = lambda x: pytz.utc.localize(x).isoformat()
+    for goal in goals:
+        calendarId = idByName[goal.calendar]
+        duration = goal.duration or datetime.timedelta(minutes=30)
+        service.events().insert(calendarId=calendarId, body={
+            'summary': goal.text,
+            'start': {'dateTime': isoformat(goal.start)},
+            'end': {'dateTime': isoformat(goal.start + duration)},
+        }).execute()
+
+
+def make_calendars(calendarNames):
+    # Delete
+    for item in service.calendarList().list().execute()['items']:
+        if item['summary'] in calendarNames:
+            service.calendarList().delete(calendarId=item['id']).execute()
+    # Create
+    idByName = {}
+    for name in calendarNames:
+        idByName[name] = service.calendars().insert(body={
+            'summary': name,
+        }).execute()['id']
+    return idByName
+
+
 if __name__ == '__main__':
     argumentParser = get_argumentParser()
     argumentParser.add_argument(
-        '-d', '--days', metavar='N', default=1, type=int,
-        help='limit schedule by number of days from today')
-    arguments = argumentParser.parse_args()
-    run(arguments.sourcePaths,
-        arguments.days,
-        arguments.timezone)
+        '-d', '--days', metavar='DAYS', default=1, type=int,
+        help='number of days to look ahead')
+    argumentParser.add_argument(
+        '-s', '--sync', action='store_true',
+        help='synchronize with Google calendar')
+    args = get_args(argumentParser)
+    goals = run(args.sourcePaths, args.days, args.timezone)
+
+    if goals and args.sync:
+        if args.clientId:
+            service = get_service(
+                args.configFolder, args.clientId, args.clientSecret,
+                args.developerKey)
+            synchronize(service, goals)
+        else:
+            configPath = os.path.join(args.configFolder, CONFIG_NAME)
+            print 'Parameters missing in %s:' % configPath
+            print 'clientId, clientSecret, developerKey'

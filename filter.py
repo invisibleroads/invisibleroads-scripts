@@ -6,7 +6,7 @@ from tempfile import mkstemp
 from whenIO import WhenIO
 
 from goalIO import GoalFactory, load_whenIO, STATUS_DONE
-from script import get_argumentParser
+from script import get_argumentParser, get_args
 
 
 def run(sourcePaths, showAll, overwriteFirst=False, timezone=None):
@@ -42,9 +42,5 @@ if __name__ == '__main__':
     argumentParser.add_argument(
         '-u', '--update', action='store_true',
         help='overwrite first file with output')
-    arguments = argumentParser.parse_args()
-    run(
-        arguments.sourcePaths,
-        arguments.all,
-        arguments.update,
-        arguments.timezone)
+    args = get_args(argumentParser)
+    run(args.sourcePaths, args.all, args.update, args.timezone)

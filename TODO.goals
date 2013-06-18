@@ -1,2 +1,3 @@
+= Copy ACLs from primary calendar
 Use distribute setup.py intead of bash setup.sh
 Update to Python 3
