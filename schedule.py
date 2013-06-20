@@ -118,8 +118,8 @@ def get_service(configFolder, clientId, clientSecret, developerKey):
 
 
 def synchronize(service, goals):
-    idByName = make_calendars(set(x.calendar for x in goals))
-    # Create events
+    idByName = make_calendars(service, set(x.calendar for x in goals))
+    # Make events
     isoformat = lambda x: pytz.utc.localize(x).isoformat()
     for goal in goals:
         calendarId = idByName[goal.calendar]
@@ -129,9 +129,10 @@ def synchronize(service, goals):
             'start': {'dateTime': isoformat(goal.start)},
             'end': {'dateTime': isoformat(goal.start + duration)},
         }).execute()
+    return idByName
 
 
-def make_calendars(calendarNames):
+def make_calendars(service, calendarNames):
     # Delete
     for item in service.calendarList().list().execute()['items']:
         if item['summary'] in calendarNames:
@@ -145,6 +146,28 @@ def make_calendars(calendarNames):
     return idByName
 
 
+def clone_acls(service, calendarNames):
+    primaryCalendar = get_primaryCalendar(service)
+    primaryACLs = service.acl().list(
+        calendarId=primaryCalendar['id'],
+    ).execute()['items']
+    secondaryACLs = filter(lambda x: x['role'] != 'owner', primaryACLs)
+    for calendar in service.calendarList().list().execute()['items']:
+        if calendar['summary'] not in calendarNames:
+            continue
+        for acl in secondaryACLs:
+            service.acl().insert(
+                calendarId=calendar['id'],
+                body={'role': acl['role'], 'scope': acl['scope']},
+            ).execute()
+
+
+def get_primaryCalendar(service):
+    for calendar in service.calendarList().list().execute()['items']:
+        if 'primary' in calendar:
+            return calendar
+
+
 if __name__ == '__main__':
     argumentParser = get_argumentParser()
     argumentParser.add_argument(
@@ -153,16 +176,20 @@ if __name__ == '__main__':
     argumentParser.add_argument(
         '-s', '--sync', action='store_true',
         help='synchronize with Google calendar')
+    argumentParser.add_argument(
+        '-S', '--SYNC', action='store_true',
+        help='synchronize and clone permissions from primary calendar')
     args = get_args(argumentParser)
     goals = run(args.sourcePaths, args.days, args.timezone)
 
-    if goals and args.sync:
-        if args.clientId:
-            service = get_service(
-                args.configFolder, args.clientId, args.clientSecret,
-                args.developerKey)
-            synchronize(service, goals)
-        else:
+    if goals and (args.sync or args.SYNC):
+        if not args.clientId:
             configPath = os.path.join(args.configFolder, CONFIG_NAME)
             print 'Parameters missing in %s:' % configPath
             print 'clientId, clientSecret, developerKey'
+        service = get_service(
+            args.configFolder, args.clientId, args.clientSecret,
+            args.developerKey)
+        idByName = synchronize(service, goals)
+        if args.SYNC:
+            clone_acls(service, idByName)
