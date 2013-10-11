@@ -171,7 +171,7 @@ def get_primaryCalendar(service):
 if __name__ == '__main__':
     argumentParser = get_argumentParser()
     argumentParser.add_argument(
-        '-d', '--days', metavar='DAYS', default=1, type=int,
+        '-d', '--days', metavar='DAYS', default=2, type=int,
         help='number of days to look ahead')
     argumentParser.add_argument(
         '-s', '--sync', action='store_true',
