@@ -1,37 +1,84 @@
 #!/usr/bin/env python
 import datetime
-import shutil
+import os
 import sys
-from tempfile import mkstemp
+from cStringIO import StringIO
 from whenIO import WhenIO
 
 from goalIO import GoalFactory, load_whenIO, STATUS_DONE
 from script import get_argument_parser, get_args
 
 
-def run(source_paths, show_all, overwrite_first=False, target_timezone=None):
-    if overwrite_first:
-        temporary_path = mkstemp()[1]
-        sys.stdout = open(temporary_path, 'wt')
-    utcnow = datetime.datetime.utcnow()
+GOAL_TEMPLATE = '%(leadspace)s%(status)s%(text)s%(when)s'
+
+
+def run(source_paths, show_all, overwrite=False, target_timezone=None):
     target_whenIO = WhenIO(timezone=target_timezone)
-    print('# %s %s' % (
+    header = '# %s %s' % (
         target_whenIO._tz.zone,
-        target_whenIO._today.strftime('%-m/%-d/%Y')))
+        target_whenIO._today.strftime('%-m/%-d/%Y'))
     for source_path in source_paths:
-        with open(source_path) as source_file:
-            source_whenIO = load_whenIO(source_file)
-            goal_factory = GoalFactory(source_whenIO)
-            for line in source_file:
-                goal = goal_factory.parse_line(line)
-                if goal.status == STATUS_DONE and not goal.start:
-                    goal.start = utcnow
-                if show_all or goal.status < STATUS_DONE:
-                    template = '%(leadspace)s%(status)s%(text)s%(when)s'
-                    print(goal.format(template, whenIO=target_whenIO))
-    if overwrite_first:
-        sys.stdout.flush()
-        shutil.move(temporary_path, source_paths[0])
+        with Output(source_path, overwrite) as output:
+            output.write(header)
+            with open(source_path) as source_file:
+                process(source_file, output, show_all, target_whenIO)
+
+
+def process(source_file, output, show_all, target_whenIO):
+    utcnow = datetime.datetime.utcnow()
+    archived_goals = []
+    goal_factory = GoalFactory(load_whenIO(source_file))
+    for line in source_file:
+        goal = goal_factory.parse_line(line)
+        if goal.status == STATUS_DONE and not goal.start:
+            goal.start = utcnow
+        if show_all or goal.status < STATUS_DONE:
+            output.write(goal.format(
+                GOAL_TEMPLATE, whenIO=target_whenIO))
+        if goal.status == STATUS_DONE:
+            archived_goals.append(goal)
+    for goal in sorted(archived_goals, key=lambda x: x.start, reverse=True):
+        output.log(' '.join([
+            goal.format('%(status)s%(text)s'),
+            '[%s]' % utcnow.strftime('%m/%d/%Y'),
+        ]))
+
+
+class Output(object):
+
+    def __init__(self, source_path, overwrite):
+        self.source_path = source_path
+        self.overwrite = overwrite
+
+    def __enter__(self):
+        self.target_file = StringIO() if self.overwrite else sys.stdout
+        self.log_file = StringIO()
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        if self.overwrite:
+            self.overwrite_source()
+            self.update_log()
+
+    def write(self, text):
+        self.target_file.write(text + '\n')
+
+    def log(self, text):
+        self.log_file.write(text + '\n')
+
+    def overwrite_source(self):
+        self.target_file.reset()
+        open(self.source_path, 'wt').write(self.target_file.read())
+
+    def update_log(self):
+        self.log_file.reset()
+        log_path = os.path.splitext(self.source_path)[0] + '.log'
+        try:
+            old_log = open(log_path, 'rt').read()
+        except IOError:
+            old_log = ''
+        new_log = self.log_file.read()
+        open(log_path, 'wt').write(old_log + new_log)
 
 
 if __name__ == '__main__':
