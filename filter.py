@@ -71,9 +71,12 @@ class Output(object):
         open(self.source_path, 'wt').write(self.target_file.read())
 
     def update_log(self):
-        self.log_file.reset()
-        log_path = os.path.splitext(self.source_path)[0] + '.log'
         header = '# UTC'
+
+        self.log_file.reset()
+        new_log = self.log_file.read()
+
+        log_path = os.path.splitext(self.source_path)[0] + '.log'
         try:
             old_log_lines = filter(
                 lambda x: not x.startswith('#'),
@@ -81,13 +84,12 @@ class Output(object):
             old_log = '\n'.join(old_log_lines)
         except IOError:
             old_log = ''
-        new_log = self.log_file.read()
-        log_text = '\n'.join([
+
+        open(log_path, 'wt').write('\n'.join([
             header,
             old_log,
             new_log,
-        ]).strip() + '\n'
-        open(log_path, 'wt').write(log_text)
+        ]).strip() + '\n')
 
 
 if __name__ == '__main__':
