@@ -21,11 +21,11 @@ TEXT = """\
 class TestGoalFactory(TestCase):
 
     def setUp(self):
-        self.goalFactory = GoalFactory(inUTC=False)
+        self.goal_factory = GoalFactory(in_utc=False)
 
     def test_parse_line(self):
         def expect(line, text, start, duration):
-            goal = self.goalFactory.parse_line(line)
+            goal = self.goal_factory.parse_line(line)
             self.assertEqual(goal.text, text)
             self.assertEqual(goal.start, start)
             self.assertEqual(goal.duration, duration)
@@ -41,7 +41,7 @@ class TestGoalFactory(TestCase):
             duration=relativedelta(minutes=30))
 
     def test_parse_hierarchy(self):
-        roots = self.goalFactory.parse_hierarchy(TEXT.splitlines())
+        roots = self.goal_factory.parse_hierarchy(TEXT.splitlines())
         self.assertEqual('1', roots[0].text)
         self.assertEqual('11', roots[0].children[0].text)
         self.assertEqual('12', roots[0].children[1].text)

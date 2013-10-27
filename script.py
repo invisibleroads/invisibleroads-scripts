@@ -9,36 +9,36 @@ CONFIG_FOLDER = os.path.expanduser('~/.' + APPLICATION_NAME)
 CONFIG_NAME = 'default.cfg'
 
 
-def get_argumentParser():
-    argumentParser = ArgumentParser()
-    argumentParser.add_argument(
-        'sourcePath', nargs='+',
+def get_argument_parser():
+    argument_parser = ArgumentParser()
+    argument_parser.add_argument(
+        'source_path', nargs='+',
         help='text file with goals in hierarchical order')
-    argumentParser.add_argument(
+    argument_parser.add_argument(
         '-c', '--config', metavar='FOLDER',
-        dest='configFolder', default=CONFIG_FOLDER,
+        dest='config_folder', default=CONFIG_FOLDER,
         help='configuration folder, e.g. %s' % CONFIG_FOLDER)
-    argumentParser.add_argument(
-        '-t', '--timezone', metavar='TIMEZONE',
+    argument_parser.add_argument(
+        '-t', '--target_timezone', metavar='TIMEZONE',
         help='target timezone, e.g. US/Eastern')
-    return argumentParser
+    return argument_parser
 
 
-def get_args(argumentParser):
-    args = argumentParser.parse_args()
-    args.sourcePaths = args.sourcePath
-    configPath = os.path.join(args.configFolder, CONFIG_NAME)
-    configParser = ConfigParser()
-    configParser.read(configPath)
-    if not args.timezone:
+def get_args(argument_parser):
+    args = argument_parser.parse_args()
+    args.source_paths = args.source_path
+    config_path = os.path.join(args.config_folder, CONFIG_NAME)
+    config_parser = ConfigParser()
+    config_parser.read(config_path)
+    if not args.target_timezone:
         try:
-            args.timezone = configParser.get('main', 'timezone')
+            args.target_timezone = config_parser.get('main', 'timezone')
         except (NoSectionError, NoOptionError):
-            args.timezone = get_localzone().zone
+            args.target_timezone = get_localzone().zone
     try:
-        args.clientId = configParser.get('calendar', 'clientId')
-        args.clientSecret = configParser.get('calendar', 'clientSecret')
-        args.developerKey = configParser.get('calendar', 'developerKey')
+        args.client_id = config_parser.get('calendar', 'client_id')
+        args.client_secret = config_parser.get('calendar', 'client_secret')
+        args.developer_key = config_parser.get('calendar', 'developer_key')
     except (NoSectionError, NoOptionError):
-        args.clientId, args.clientSecret, args.developerKey = '', '', ''
+        args.client_id, args.client_secret, args.developer_key = '', '', ''
     return args

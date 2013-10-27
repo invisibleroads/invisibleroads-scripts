@@ -1,7 +1,7 @@
 = Save done or cancelled goals to log for later analysis
 Synchronize with Google Calendar
     + Copy ACLs from primary calendar
-    Update calendars instead of deleting them
+    + Update calendars instead of deleting them
     Investigate Invalid Grant error after user revokes access
 Use distribute setup.py intead of bash setup.sh
 Update to Python 3

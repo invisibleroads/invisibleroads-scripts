@@ -7,17 +7,17 @@ from goalIO import (
     load_whenIO,
     STATUS_NEXT,
     INDENT_UNIT)
-from script import get_argumentParser, get_args
+from script import get_argument_parser, get_args
 
 
-def run(sourcePaths):
+def run(source_paths):
     print_line = lambda _: sys.stdout.write(_ + '\n')
     print_error = lambda _: sys.stderr.write(_ + '\n')
-    for sourcePath in sourcePaths:
-        with open(sourcePath) as sourceFile:
-            whenIO = load_whenIO(sourceFile)
-            goalFactory = GoalFactory(whenIO)
-            roots = goalFactory.parse_hierarchy(sourceFile)
+    for source_path in source_paths:
+        with open(source_path) as source_file:
+            whenIO = load_whenIO(source_file)
+            goal_factory = GoalFactory(whenIO)
+            roots = goal_factory.parse_hierarchy(source_file)
             try:
                 check_goals(roots)
             except GoalError, error:
@@ -31,14 +31,14 @@ def run(sourcePaths):
 
 
 def check_goals(goals):
-    nextSteps = []
+    next_steps = []
     for goal in goals:
         if STATUS_NEXT == goal.status:
-            nextSteps.append(goal)
-        if len(nextSteps) > 1:
+            next_steps.append(goal)
+        if len(next_steps) > 1:
             lines = ['Whoops! A goal can have at most one next step.']
-            lines.append(INDENT_UNIT + nextSteps[0].text)
-            lines.append(INDENT_UNIT + nextSteps[1].text)
+            lines.append(INDENT_UNIT + next_steps[0].text)
+            lines.append(INDENT_UNIT + next_steps[1].text)
             raise GoalError('\n'.join(lines))
         check_goals(goal.children)
 
@@ -62,6 +62,6 @@ def format_lineage(goal):
 
 
 if __name__ == '__main__':
-    argumentParser = get_argumentParser()
-    args = get_args(argumentParser)
-    run(args.sourcePaths)
+    argument_parser = get_argument_parser()
+    args = get_args(argument_parser)
+    run(args.source_paths)

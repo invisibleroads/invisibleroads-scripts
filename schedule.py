@@ -8,95 +8,96 @@ from dateutil.relativedelta import relativedelta
 from whenIO import WhenIO
 
 from goalIO import GoalFactory, load_whenIO, STATUS_DONE
-from script import get_argumentParser, get_args, APPLICATION_NAME, CONFIG_NAME
+from script import get_argument_parser, get_args, APPLICATION_NAME, CONFIG_NAME
 
 
-def run(sourcePaths, dayCount, timezone):
+def run(source_paths, day_count, target_timezone):
     goals = []
-    targetWhenIO = WhenIO(timezone)
+    target_whenIO = WhenIO(target_timezone)
     # Parse
-    for sourcePath in sourcePaths:
-        calendarName = get_calendarName(sourcePath)
-        with open(sourcePath) as sourceFile:
-            sourceWhenIO = load_whenIO(sourceFile)
-            goalFactory = GoalFactory(sourceWhenIO)
-            for line in sourceFile:
-                goal = goalFactory.parse_line(line)
-                goal.calendar = calendarName
+    for source_path in source_paths:
+        calendar_name = get_calendar_name(source_path)
+        with open(source_path) as source_file:
+            source_whenIO = load_whenIO(source_file)
+            goal_factory = GoalFactory(source_whenIO)
+            for line in source_file:
+                goal = goal_factory.parse_line(line)
+                goal.calendar = calendar_name
                 goals.append(goal)
-    goals, warnings = filter_goals(goals, dayCount, targetWhenIO)
+    goals, warnings = filter_goals(goals, day_count, target_whenIO)
     # Format
     template = '%(time)s\t%(duration)s\t%(text)s'
-    lines = format_schedule(goals, template, targetWhenIO)
+    lines = format_schedule(goals, template, target_whenIO)
     if lines:
         sys.stdout.write('\n'.join(lines) + '\n')
     sys.stderr.write('\n'.join(warnings) + '\n')
     return goals
 
 
-def get_calendarName(filePath):
-    calendarName = os.path.splitext(filePath)[0]
-    if 'todo' == calendarName.lower():
-        folderPath = os.path.dirname(os.path.abspath(filePath))
-        calendarName = os.path.basename(folderPath)
-    return calendarName
+def get_calendar_name(file_path):
+    calendar_name = os.path.splitext(file_path)[0]
+    if 'todo' == calendar_name.lower():
+        folder_path = os.path.dirname(os.path.abspath(file_path))
+        calendar_name = os.path.basename(folder_path)
+    return calendar_name
 
 
-def filter_goals(goals, dayCount, whenIO):
-    selectedGoals = []
-    countByDescription = defaultdict(int)
-    timeLimit = whenIO._combine_date_time(
-        whenIO._today + datetime.timedelta(days=dayCount + 1))
+def filter_goals(goals, day_count, whenIO):
+    selected_goals = []
+    count_by_description = defaultdict(int)
+    time_limit = whenIO._combine_date_time(
+        whenIO._today + datetime.timedelta(days=day_count + 1))
     for goal in goals:
         if not goal.duration:
-            countByDescription['missing duration'] += 1
+            count_by_description['missing duration'] += 1
         if not goal.start:
-            countByDescription['not scheduled'] += 1
+            count_by_description['not scheduled'] += 1
             continue
-        for selectedGoal in selectedGoals:
-            if overlap(goal, selectedGoal):
-                countByDescription['overlap'] += 1
+        for selected_goal in selected_goals:
+            if overlap(goal, selected_goal):
+                count_by_description['overlap'] += 1
                 break
         start = whenIO._to_local(goal.start)
-        if goal.status < STATUS_DONE and start < timeLimit:
-            selectedGoals.append(goal)
+        if goal.status < STATUS_DONE and start < time_limit:
+            selected_goals.append(goal)
     warnings = []
-    if not selectedGoals:
-        if dayCount == 0:
-            timeRange = 'today'
-        elif dayCount == 1:
-            timeRange = 'tomorrow'
+    if not selected_goals:
+        if day_count == 0:
+            time_range = 'today'
+        elif day_count == 1:
+            time_range = 'tomorrow'
         else:
-            timeRange = 'the next %s days' % dayCount
-        warnings.append('Whoops! No goals scheduled for %s.' % timeRange)
-    for description, count in countByDescription.iteritems():
+            time_range = 'the next %s days' % day_count
+        warnings.append('Whoops! No goals scheduled for %s.' % time_range)
+    for description, count in count_by_description.iteritems():
         warnings.append('%s %s' % (count, description))
-    return selectedGoals, warnings
+    return selected_goals, warnings
 
 
 def format_schedule(goals, template, whenIO):
     'Format in chronological order'
     lines = []
-    currentDate = None
+    current_date = None
     for goal in sorted(goals, key=lambda _: _.start):
         start = whenIO._to_local(goal.start)
-        if currentDate != start.date():
-            if currentDate:
+        if current_date != start.date():
+            if current_date:
                 lines.append('')
-            currentDate = start.date()
-            lines.append(whenIO.format_date(currentDate))
-        lines.append(goal.format(template, omitStartDate=True, whenIO=whenIO))
+            current_date = start.date()
+            lines.append(whenIO.format_date(current_date))
+        lines.append(goal.format(
+            template, omit_start_date=True, whenIO=whenIO))
     return lines
 
 
 def overlap(goal1, goal2):
-    latestStart = max(goal1.start, goal2.start)
-    earliestEnd = min(goal1.start + (goal1.duration or relativedelta()),
-                      goal2.start + (goal2.duration or relativedelta()))
-    return (earliestEnd - latestStart).total_seconds() > 0
+    latest_start = max(goal1.start, goal2.start)
+    earliest_end = min(goal1.start + (goal1.duration or relativedelta()),
+                       goal2.start + (goal2.duration or relativedelta()))
+    return (earliest_end - latest_start).total_seconds() > 0
 
 
-def get_service(configFolder, clientId, clientSecret, developerKey):
+def get_service(config_folder, client_id, client_secret, developer_key):
     from apiclient.discovery import build
     from httplib2 import Http
     from oauth2client.client import OAuth2WebServerFlow
@@ -104,92 +105,104 @@ def get_service(configFolder, clientId, clientSecret, developerKey):
     from oauth2client.tools import run as run_
 
     flow = OAuth2WebServerFlow(
-        client_id=clientId, client_secret=clientSecret,
+        client_id=client_id, client_secret=client_secret,
         scope='https://www.googleapis.com/auth/calendar',
         user_agent=APPLICATION_NAME)
-    storagePath = os.path.join(configFolder, 'calendar.json')
-    storage = Storage(storagePath)
+    storage = Storage(os.path.join(config_folder, 'calendar.json'))
     credentials = storage.get()
     if not credentials or credentials.invalid:
         credentials = run_(flow, storage)
     return build(
         serviceName='calendar', version='v3',
-        http=credentials.authorize(Http()), developerKey=developerKey)
+        http=credentials.authorize(Http()), developerKey=developer_key)
 
 
 def synchronize(service, goals):
-    idByName = make_calendars(service, set(x.calendar for x in goals))
+    calendar_names = set(x.calendar for x in goals)
+    calendar_id_by_name = make_calendars(service, calendar_names)
+    clear_events(service, calendar_id_by_name.values())
     # Make events
     isoformat = lambda x: pytz.utc.localize(x).isoformat()
     for goal in goals:
-        calendarId = idByName[goal.calendar]
+        calendar_id = calendar_id_by_name[goal.calendar]
         duration = goal.duration or datetime.timedelta(minutes=30)
-        service.events().insert(calendarId=calendarId, body={
+        service.events().insert(calendarId=calendar_id, body={
             'summary': goal.text,
             'start': {'dateTime': isoformat(goal.start)},
             'end': {'dateTime': isoformat(goal.start + duration)},
         }).execute()
-    return idByName
+    return calendar_id_by_name
 
 
-def make_calendars(service, calendarNames):
-    # Delete
-    for item in service.calendarList().list().execute()['items']:
-        if item['summary'] in calendarNames:
-            service.calendarList().delete(calendarId=item['id']).execute()
-    # Create
-    idByName = {}
-    for name in calendarNames:
-        idByName[name] = service.calendars().insert(body={
-            'summary': name,
-        }).execute()['id']
-    return idByName
+def make_calendars(service, calendar_names):
+    calendar_id_by_name = {}
+    for calendar_item in service.calendarList().list().execute()['items']:
+        calendar_name = calendar_item['summary']
+        if calendar_name in calendar_names:
+            calendar_id = calendar_item['id']
+            calendar_id_by_name[calendar_name] = calendar_id
+    for calendar_name in calendar_names:
+        if calendar_name not in calendar_id_by_name:
+            calendar_id_by_name[calendar_name] = service.calendars().insert(
+                body={'summary': calendar_name}).execute()['id']
+    return calendar_id_by_name
 
 
-def clone_acls(service, calendarNames):
-    primaryCalendar = get_primaryCalendar(service)
-    primaryACLs = service.acl().list(
-        calendarId=primaryCalendar['id'],
+def clear_events(service, calendar_ids):
+    for calendar_id in calendar_ids:
+        for event_item in service.events().list(
+            calendarId=calendar_id
+        ).execute()['items']:
+            service.events().delete(
+                calendarId=calendar_id,
+                eventId=event_item['id'],
+            ).execute()
+
+
+def clone_acls(service, calendar_names):
+    primary_calendar = get_primary_calendar(service)
+    primary_acls = service.acl().list(
+        calendarId=primary_calendar['id'],
     ).execute()['items']
-    secondaryACLs = filter(lambda x: x['role'] != 'owner', primaryACLs)
+    secondary_acls = filter(lambda x: x['role'] != 'owner', primary_acls)
     for calendar in service.calendarList().list().execute()['items']:
-        if calendar['summary'] not in calendarNames:
+        if calendar['summary'] not in calendar_names:
             continue
-        for acl in secondaryACLs:
+        for acl in secondary_acls:
             service.acl().insert(
                 calendarId=calendar['id'],
                 body={'role': acl['role'], 'scope': acl['scope']},
             ).execute()
 
 
-def get_primaryCalendar(service):
+def get_primary_calendar(service):
     for calendar in service.calendarList().list().execute()['items']:
         if 'primary' in calendar:
             return calendar
 
 
 if __name__ == '__main__':
-    argumentParser = get_argumentParser()
-    argumentParser.add_argument(
+    argument_parser = get_argument_parser()
+    argument_parser.add_argument(
         '-d', '--days', metavar='DAYS', default=2, type=int,
         help='number of days to look ahead')
-    argumentParser.add_argument(
+    argument_parser.add_argument(
         '-s', '--sync', action='store_true',
         help='synchronize with Google calendar')
-    argumentParser.add_argument(
+    argument_parser.add_argument(
         '-S', '--SYNC', action='store_true',
         help='synchronize and clone permissions from primary calendar')
-    args = get_args(argumentParser)
-    goals = run(args.sourcePaths, args.days, args.timezone)
+    args = get_args(argument_parser)
+    goals = run(args.source_paths, args.days, args.target_timezone)
 
     if goals and (args.sync or args.SYNC):
-        if not args.clientId:
-            configPath = os.path.join(args.configFolder, CONFIG_NAME)
-            print 'Parameters missing in %s:' % configPath
-            print 'clientId, clientSecret, developerKey'
+        if not args.client_id:
+            config_path = os.path.join(args.config_folder, CONFIG_NAME)
+            print 'Parameters missing in %s:' % config_path
+            print 'client_id, client_secret, developer_key'
         service = get_service(
-            args.configFolder, args.clientId, args.clientSecret,
-            args.developerKey)
-        idByName = synchronize(service, goals)
+            args.config_folder, args.client_id, args.client_secret,
+            args.developer_key)
+        calendar_id_by_name = synchronize(service, goals)
         if args.SYNC:
-            clone_acls(service, idByName)
+            clone_acls(service, calendar_id_by_name)

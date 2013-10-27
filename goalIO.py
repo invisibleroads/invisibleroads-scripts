@@ -15,15 +15,15 @@ GOAL_TEMPLATE = '%(status)s%(text)s%(when)s'
 
 class GoalFactory(object):
 
-    def __init__(self, whenIO=None, inUTC=True):
+    def __init__(self, whenIO=None, in_utc=True):
         self.whenIO = whenIO or WhenIO()
-        self.inUTC = inUTC
+        self.in_utc = in_utc
 
     def parse_line(self, text):
         # Extract
         text, leadspace = extract_leadspace(text)
         text, status = extract_status(text)
-        text, start, duration = extract_when(text, self.whenIO, self.inUTC)
+        text, start, duration = extract_when(text, self.whenIO, self.in_utc)
         # Reduce
         text = PATTERN_WHITESPACE.sub(' ', text).strip()
         level = len(leadspace)
@@ -35,7 +35,7 @@ class GoalFactory(object):
             start,
             duration,
             self.whenIO,
-            self.inUTC)
+            self.in_utc)
 
     def parse_hierarchy(self, lines):
         lineage = [Goal()]
@@ -59,7 +59,7 @@ class GoalFactory(object):
 class Goal(object):
 
     def __init__(self, text='', status=STATUS_PENDING, level=0,
-                 start=None, duration=None, whenIO=None, inUTC=True):
+                 start=None, duration=None, whenIO=None, in_utc=True):
         # Set parameters
         self.text = text
         self.status = status
@@ -67,7 +67,7 @@ class Goal(object):
         self.start = start
         self.duration = duration
         self.whenIO = whenIO or WhenIO()
-        self.inUTC = inUTC
+        self.in_utc = in_utc
         # Set variables
         self._parent = None
         self.children = []
@@ -81,7 +81,11 @@ class Goal(object):
         else:
             return '<Goal>'
 
-    def format(self, template=GOAL_TEMPLATE, omitStartDate=False, whenIO=None):
+    def format(
+            self,
+            template=GOAL_TEMPLATE,
+            omit_start_date=False,
+            whenIO=None):
         leadspace = ' ' * self.level
         if self.status > STATUS_PENDING:
             status = STATUS_CHARACTERS[self.status] + ' '
@@ -89,14 +93,14 @@ class Goal(object):
             status = ''
         time = (whenIO or self.whenIO).format(
             self.start,
-            omitStartDate=omitStartDate,
-            fromUTC=self.inUTC)
+            omitStartDate=omit_start_date,
+            fromUTC=self.in_utc)
         duration = format_duration(
-            self.duration, 
-            style='letters', 
+            self.duration,
+            style='letters',
             rounding='ceiling')
-        whenString = (time + ' ' + duration).strip()
-        when = ' [%s]' % whenString if whenString else ''
+        when_string = (time + ' ' + duration).strip()
+        when = ' [%s]' % when_string if when_string else ''
         return template % dict(
             self.__dict__,
             leadspace=leadspace,
@@ -142,7 +146,7 @@ def extract_status(text):
         return text, STATUS_CHARACTERS.index(symbol)
 
 
-def extract_when(text, whenIO, toUTC=True):
+def extract_when(text, whenIO, to_utc=True):
     start = None
     duration = None
     matches = PATTERN_WHEN.findall(text)
@@ -150,8 +154,8 @@ def extract_when(text, whenIO, toUTC=True):
         # Remove matches from text
         text = PATTERN_WHEN.sub('', text)
         # Parse
-        whenString = ' '.join(matches).lower()
-        timestamps, terms = whenIO.parse(whenString, toUTC=toUTC)
+        when_string = ' '.join(matches).lower()
+        timestamps, terms = whenIO.parse(when_string, toUTC=to_utc)
         duration = parse_duration(' '.join(terms))
         if timestamps:
             start = timestamps[0]
@@ -163,8 +167,8 @@ def extract_when(text, whenIO, toUTC=True):
     return text, start, duration
 
 
-def load_whenIO(sourceFile):
-    line = sourceFile.next()
+def load_whenIO(source_file):
+    line = source_file.next()
     if line.startswith('#'):
         line = line.lstrip('# ')
         timezone = line.split()[0]
@@ -172,5 +176,5 @@ def load_whenIO(sourceFile):
         whenIO = WhenIO(timezone, today)
     else:
         whenIO = WhenIO()
-        sourceFile.seek(0)
+        source_file.seek(0)
     return whenIO
