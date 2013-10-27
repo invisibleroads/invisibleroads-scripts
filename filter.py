@@ -73,12 +73,13 @@ class Output(object):
     def update_log(self):
         self.log_file.reset()
         log_path = os.path.splitext(self.source_path)[0] + '.log'
+        header = '# UTC'
         try:
             old_log = open(log_path, 'rt').read()
         except IOError:
             old_log = ''
         new_log = self.log_file.read()
-        open(log_path, 'wt').write(old_log + new_log)
+        open(log_path, 'wt').write('\n'.join([header, old_log, new_log]))
 
 
 if __name__ == '__main__':
