@@ -75,11 +75,19 @@ class Output(object):
         log_path = os.path.splitext(self.source_path)[0] + '.log'
         header = '# UTC'
         try:
-            old_log = open(log_path, 'rt').read()
+            old_log_lines = filter(
+                lambda x: not x.startswith('#'),
+                open(log_path, 'rt'))
+            old_log = '\n'.join(old_log_lines)
         except IOError:
             old_log = ''
         new_log = self.log_file.read()
-        open(log_path, 'wt').write('\n'.join([header, old_log, new_log]))
+        log_text = '\n'.join([
+            header,
+            old_log,
+            new_log,
+        ]).strip() + '\n'
+        open(log_path, 'wt').write(log_text)
 
 
 if __name__ == '__main__':
