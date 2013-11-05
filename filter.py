@@ -2,7 +2,6 @@
 import datetime
 import os
 import sys
-from cStringIO import StringIO
 from whenIO import WhenIO
 
 from goalIO import GoalFactory, load_whenIO, STATUS_DONE
@@ -51,8 +50,8 @@ class Output(object):
         self.overwrite = overwrite
 
     def __enter__(self):
-        self.target_file = StringIO() if self.overwrite else sys.stdout
-        self.log_file = StringIO()
+        self.target_lines = []
+        self.log_lines = []
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
@@ -61,35 +60,28 @@ class Output(object):
             self.update_log()
 
     def write(self, text):
-        self.target_file.write(text + '\n')
+        self.target_lines.append(text)
 
     def log(self, text):
-        self.log_file.write(text + '\n')
+        self.log_lines.append(text)
 
     def overwrite_source(self):
-        self.target_file.reset()
-        open(self.source_path, 'wt').write(self.target_file.read())
+        open(self.source_path, 'wt').write('\n'.join(self.target_lines))
 
     def update_log(self):
-        header = '# UTC'
-
-        self.log_file.reset()
-        new_log = self.log_file.read()
-
+        lines = [
+            '# UTC %s' % datetime.datetime.utcnow().strftime('%m/%d/%Y'),
+        ] + self.log_lines
         log_path = os.path.splitext(self.source_path)[0] + '.log'
         try:
-            old_log_lines = filter(
-                lambda x: not x.startswith('#'),
-                open(log_path, 'rt'))
-            old_log = '\n'.join(old_log_lines)
+            for line in open(log_path, 'rt'):
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                lines.append(line)
         except IOError:
-            old_log = ''
-
-        open(log_path, 'wt').write('\n'.join([
-            header,
-            old_log,
-            new_log,
-        ]).strip() + '\n')
+            pass
+        open(log_path, 'wt').write('\n'.join(lines))
 
 
 if __name__ == '__main__':
