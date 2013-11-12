@@ -58,6 +58,8 @@ class Output(object):
         if self.overwrite:
             self.overwrite_source()
             self.update_log()
+        else:
+            sys.stdout.write('\n'.join(self.target_lines) + '\n')
 
     def write(self, text):
         self.target_lines.append(text)
