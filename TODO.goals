@@ -1,7 +1,7 @@
 # America/Los_Angeles 10/27/2013
-= Default to *.goals if no source_paths are specified
-Default to -u
 Synchronize with Google Calendar
     = Investigate Invalid Grant error after user revokes access
 Use distribute setup.py intead of bash setup.sh
 Update to Python 3
++ Default to *.goals if no source_paths are specified
++ Default to -u

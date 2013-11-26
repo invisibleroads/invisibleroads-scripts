@@ -1,5 +1,6 @@
 import os
 from argparse import ArgumentParser
+from glob import glob
 from ConfigParser import ConfigParser, NoSectionError, NoOptionError
 from tzlocal import get_localzone
 
@@ -12,11 +13,10 @@ CONFIG_NAME = 'default.cfg'
 def get_argument_parser():
     argument_parser = ArgumentParser()
     argument_parser.add_argument(
-        'source_path', nargs='+',
-        help='text file with goals in hierarchical order')
+        'source_paths', nargs='*', default=glob('*.goals'),
+        help='paths to text files with goals in hierarchical order')
     argument_parser.add_argument(
-        '-c', '--config', metavar='FOLDER',
-        dest='config_folder', default=CONFIG_FOLDER,
+        '-c', '--config_folder', metavar='FOLDER', default=CONFIG_FOLDER,
         help='configuration folder, e.g. %s' % CONFIG_FOLDER)
     argument_parser.add_argument(
         '-t', '--target_timezone', metavar='TIMEZONE',
@@ -26,7 +26,6 @@ def get_argument_parser():
 
 def get_args(argument_parser):
     args = argument_parser.parse_args()
-    args.source_paths = args.source_path
     config_path = os.path.join(args.config_folder, CONFIG_NAME)
     config_parser = ConfigParser()
     config_parser.read(config_path)
