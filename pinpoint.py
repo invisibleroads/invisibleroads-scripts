@@ -1,22 +1,17 @@
 #!/usr/bin/env python
 import sys
 
-from goalIO import (
-    GoalFactory,
-    GoalError,
-    load_whenIO,
-    STATUS_NEXT,
-    INDENT_UNIT)
+from goalIO import GoalFactory, GoalError, get_whenIO, STATUS_NEXT, INDENT_UNIT
 from script import get_argument_parser, get_args
 
 
-def run(source_paths):
+def run(source_paths, default_time):
     print_line = lambda _: sys.stdout.write(_ + '\n')
     print_error = lambda _: sys.stderr.write(_ + '\n')
     for source_path in source_paths:
         with open(source_path) as source_file:
-            whenIO = load_whenIO(source_file)
-            goal_factory = GoalFactory(whenIO)
+            goal_factory = GoalFactory(
+                get_whenIO(source_file, default_time=default_time))
             roots = goal_factory.parse_hierarchy(source_file)
             try:
                 check_goals(roots)
@@ -64,4 +59,4 @@ def format_lineage(goal):
 if __name__ == '__main__':
     argument_parser = get_argument_parser()
     args = get_args(argument_parser)
-    run(args.source_paths)
+    run(args.source_paths, args.default_time)

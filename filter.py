@@ -1,17 +1,16 @@
 #!/usr/bin/env python
 import datetime
 import os
-import sys
 from whenIO import WhenIO
 
-from goalIO import GoalFactory, load_whenIO, STATUS_DONE
+from goalIO import yield_goal, STATUS_DONE
 from script import get_argument_parser, get_args
 
 
 GOAL_TEMPLATE = '%(leadspace)s%(status)s%(text)s%(when)s'
 
 
-def run(source_paths, target_timezone=None):
+def run(source_paths, default_time, target_timezone):
     target_whenIO = WhenIO(timezone=target_timezone)
     header = '# %s %s' % (
         target_whenIO._tz.zone,
@@ -19,23 +18,21 @@ def run(source_paths, target_timezone=None):
     for source_path in source_paths:
         with Output(source_path) as output:
             output.write(header)
-            with open(source_path) as source_file:
-                process(source_file, output, target_whenIO)
+            goals = yield_goal(source_path, default_time)
+            process(goals, output, target_whenIO)
 
 
-def process(source_file, output, target_whenIO):
+def process(goals, output, target_whenIO):
     utcnow = datetime.datetime.utcnow()
     archived_goals = []
-    goal_factory = GoalFactory(load_whenIO(source_file))
-    for line in source_file:
-        goal = goal_factory.parse_line(line)
+    for goal in goals:
         if goal.status < STATUS_DONE:
             output.write(goal.format(
                 GOAL_TEMPLATE, whenIO=target_whenIO))
         elif goal.status == STATUS_DONE:
-          if not goal.start:
-            goal.start = utcnow
-          archived_goals.append(goal)
+            if not goal.start:
+                goal.start = utcnow
+            archived_goals.append(goal)
     for goal in sorted(archived_goals, key=lambda x: x.start, reverse=True):
         output.log(' '.join([
             goal.format('%(status)s%(text)s'),
@@ -85,4 +82,4 @@ class Output(object):
 if __name__ == '__main__':
     argument_parser = get_argument_parser()
     args = get_args(argument_parser)
-    run(args.source_paths, args.target_timezone)
+    run(args.source_paths, args.default_time, args.target_timezone)

@@ -167,14 +167,22 @@ def extract_when(text, whenIO, to_utc=True):
     return text, start, duration
 
 
-def load_whenIO(source_file):
+def yield_goal(source_path, default_time):
+    with open(source_path) as source_file:
+        goal_factory = GoalFactory(get_whenIO(source_file, default_time))
+        for line in source_file:
+            yield goal_factory.parse_line(line)
+
+
+def get_whenIO(source_file, default_time):
+    kw = dict(default_time=default_time)
     line = source_file.next()
     if line.startswith('#'):
         line = line.lstrip('# ')
         timezone = line.split()[0]
         today = WhenIO(timezone).parse(line, toUTC=False)[0][0]
-        whenIO = WhenIO(timezone, today)
+        whenIO = WhenIO(timezone, today, **kw)
     else:
-        whenIO = WhenIO()
+        whenIO = WhenIO(**kw)
         source_file.seek(0)
     return whenIO

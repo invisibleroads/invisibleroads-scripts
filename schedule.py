@@ -7,23 +7,19 @@ from collections import defaultdict
 from dateutil.relativedelta import relativedelta
 from whenIO import WhenIO
 
-from goalIO import GoalFactory, load_whenIO, STATUS_DONE
+from goalIO import yield_goal, STATUS_DONE
 from script import get_argument_parser, get_args, APPLICATION_NAME, CONFIG_NAME
 
 
-def run(source_paths, day_count, target_timezone):
+def run(source_paths, default_time, day_count, target_timezone):
     goals = []
     target_whenIO = WhenIO(target_timezone)
     # Parse
     for source_path in source_paths:
         calendar_name = get_calendar_name(source_path)
-        with open(source_path) as source_file:
-            source_whenIO = load_whenIO(source_file)
-            goal_factory = GoalFactory(source_whenIO)
-            for line in source_file:
-                goal = goal_factory.parse_line(line)
-                goal.calendar = calendar_name
-                goals.append(goal)
+        for goal in yield_goal(source_path, default_time):
+            goal.calendar = calendar_name
+            goals.append(goal)
     goals, warnings = filter_goals(goals, day_count, target_whenIO)
     # Format
     template = '%(time)s\t%(duration)s\t%(text)s'
@@ -193,8 +189,8 @@ if __name__ == '__main__':
         '-S', '--SYNC', action='store_true',
         help='synchronize and clone permissions from primary calendar')
     args = get_args(argument_parser)
-    goals = run(args.source_paths, args.days, args.target_timezone)
-
+    goals = run(
+        args.source_paths, args.default_time, args.days, args.target_timezone)
     if goals and (args.sync or args.SYNC):
         if not args.client_id:
             config_path = os.path.join(args.config_folder, CONFIG_NAME)
