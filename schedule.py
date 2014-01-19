@@ -93,7 +93,8 @@ def overlap(goal1, goal2):
     return (earliest_end - latest_start).total_seconds() > 0
 
 
-def get_service(config_folder, client_id, client_secret, developer_key):
+def get_service(
+        config_folder, client_id, client_secret, developer_key, user_email):
     from apiclient.discovery import build
     from httplib2 import Http
     from oauth2client.client import OAuth2WebServerFlow
@@ -102,12 +103,18 @@ def get_service(config_folder, client_id, client_secret, developer_key):
 
     flow = OAuth2WebServerFlow(
         client_id=client_id, client_secret=client_secret,
-        scope='https://www.googleapis.com/auth/calendar',
+        scope='email https://www.googleapis.com/auth/calendar',
         user_agent=APPLICATION_NAME)
-    storage = Storage(os.path.join(config_folder, 'calendar.json'))
+    storage_path = os.path.join(config_folder, user_email or 'default.json')
+    storage = Storage(storage_path)
     credentials = storage.get()
     if not credentials or credentials.invalid:
         credentials = run_(flow, storage)
+    # Save credentials
+    client_email = credentials.token_response['id_token']['email']
+    credential_path = os.path.join(config_folder, client_email)
+    open(credential_path, 'w').write(credentials.to_json())
+    # Return service
     return build(
         serviceName='calendar', version='v3',
         http=credentials.authorize(Http()), developerKey=developer_key)
@@ -183,22 +190,22 @@ if __name__ == '__main__':
         '-d', '--days', metavar='DAYS', default=2, type=int,
         help='number of days to look ahead')
     argument_parser.add_argument(
-        '-s', '--sync', action='store_true',
-        help='synchronize with Google calendar')
-    argument_parser.add_argument(
-        '-S', '--SYNC', action='store_true',
-        help='synchronize and clone permissions from primary calendar')
+        '-s', '--synchronize', metavar='EMAIL', nargs='?', default=False, const=True,
+        help='synchronize calendar and clone permissions')
     args = get_args(argument_parser)
     goals = run(
         args.source_paths, args.default_time, args.days, args.target_timezone)
-    if goals and (args.sync or args.SYNC):
+    if goals and args.synchronize:
         if not args.client_id:
             config_path = os.path.join(args.config_folder, CONFIG_NAME)
             print 'Parameters missing in %s:' % config_path
             print 'client_id, client_secret, developer_key'
+        try:
+            user_email = args.synchronize if '@' in args.synchronize else ''
+        except TypeError:
+            user_email = ''
         service = get_service(
             args.config_folder, args.client_id, args.client_secret,
-            args.developer_key)
+            args.developer_key, user_email)
         calendar_id_by_name = synchronize(service, goals)
-        if args.SYNC:
-            clone_acls(service, calendar_id_by_name)
+        clone_acls(service, calendar_id_by_name)

@@ -24,7 +24,7 @@ def get_argument_parser():
         '-t', '--target_timezone', metavar='TIMEZONE',
         help='target timezone, e.g. US/Eastern')
     argument_parser.add_argument(
-        '--default_time', metavar='TIME', default=datetime.time(18),
+        '-z', '--default_time', metavar='TIME', default=datetime.time(18),
         type=lambda x: dateutil.parser.parse(x).time(),
         help='default time if unspecified, e.g. 6pm')
     return argument_parser
