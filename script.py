@@ -1,9 +1,9 @@
 import datetime
 import dateutil.parser
+import fnmatch
 import os
 from ConfigParser import ConfigParser, NoSectionError, NoOptionError
 from argparse import ArgumentParser
-from glob import glob
 from tzlocal import get_localzone
 
 
@@ -15,7 +15,7 @@ CONFIG_NAME = 'default.cfg'
 def get_argument_parser():
     argument_parser = ArgumentParser()
     argument_parser.add_argument(
-        'source_paths', nargs='*', default=glob('*.goals'),
+        'source_paths', nargs='*', default=glob_recursively('*.goals'),
         help='paths to text files with goals in hierarchical order')
     argument_parser.add_argument(
         '-c', '--config_folder', metavar='FOLDER', default=CONFIG_FOLDER,
@@ -47,3 +47,11 @@ def get_args(argument_parser):
     except (NoSectionError, NoOptionError):
         args.client_id, args.client_secret, args.developer_key = '', '', ''
     return args
+
+
+def glob_recursively(filename_pattern):
+    matches = []
+    for root, folders, filenames in os.walk('.'):
+        for filename in fnmatch.filter(filenames, filename_pattern):
+            matches.append(os.path.join(root, filename))
+    return matches
