@@ -41,9 +41,9 @@ def get_args(argument_parser):
         except (NoSectionError, NoOptionError):
             args.target_timezone = get_localzone().zone
     try:
-        args.client_id = config_parser.get('calendar', 'client_id')
-        args.client_secret = config_parser.get('calendar', 'client_secret')
-        args.developer_key = config_parser.get('calendar', 'developer_key')
+        args.client_id = config_parser.get('oauth', 'client_id')
+        args.client_secret = config_parser.get('oauth', 'client_secret')
+        args.developer_key = config_parser.get('oauth', 'developer_key')
     except (NoSectionError, NoOptionError):
         args.client_id, args.client_secret, args.developer_key = '', '', ''
     return args
