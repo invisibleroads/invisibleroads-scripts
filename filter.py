@@ -7,7 +7,7 @@ from goalIO import yield_goal, STATUS_DONE
 from script import get_argument_parser, get_args
 
 
-GOAL_TEMPLATE = '%(leadspace)s%(status)s%(text)s%(when)s'
+GOAL_TEMPLATE = '%(leadspace)s%(status)s%(text)s%(properties)s'
 
 
 def run(source_paths, default_time, target_timezone):

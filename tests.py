@@ -24,19 +24,22 @@ class TestGoalFactory(TestCase):
         self.goal_factory = GoalFactory(in_utc=False)
 
     def test_parse_line(self):
-        def expect(line, text, start, duration):
+        def expect(line, text, impact, start, duration):
             goal = self.goal_factory.parse_line(line)
             self.assertEqual(goal.text, text)
+            self.assertEqual(goal.impact, impact)
             self.assertEqual(goal.start, start)
             self.assertEqual(goal.duration, duration)
         expect(
-            'be  free  [1/1/2000 12am 1am]',
+            'be  free  [+1000 1/1/2000 12am 1am]',
             text='be free',
+            impact=1000,
             start=datetime(2000, 1, 1),
             duration=relativedelta(hours=1))
         expect(
             'run [30m]',
             text='run',
+            impact=0,
             start=None,
             duration=relativedelta(minutes=30))
 

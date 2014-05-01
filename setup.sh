@@ -4,4 +4,5 @@ if [ -d "$HOME/.scripts" ]; then
     ln -sf `pwd`/filter.py ~/.scripts
     ln -sf `pwd`/schedule.py ~/.scripts
     ln -sf `pwd`/pinpoint.py ~/.scripts
+    ln -sf `pwd`/rank.py ~/.scripts
 fi
