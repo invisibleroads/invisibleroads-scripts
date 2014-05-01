@@ -4,7 +4,7 @@ Get text of document
 Replace text of document
 Create document
 Check if document exists
-Define tabs in document
+Process tabs properly
 Let user compress timeline scale into weeks or months
 Add points for ranking
 Use distribute setup.py intead of bash setup.sh
