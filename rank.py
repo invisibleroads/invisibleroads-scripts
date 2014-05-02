@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from goalIO import GoalFactory, get_whenIO, yield_leaf
 from script import get_argument_parser, get_args
 
