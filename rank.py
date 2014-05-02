@@ -10,7 +10,7 @@ GOAL_TEMPLATE = '%(duration)s\t%(text)s'
 def run(source_paths, default_time):
     packs = []
     hard_goals = []
-    TWO_HOURS_EFFORT = get_effort(relativedelta(hours=1))
+    TWO_HOURS_EFFORT = get_effort(relativedelta(hours=2))
     for source_path in source_paths:
         with open(source_path) as source_file:
             goal_factory = GoalFactory(
