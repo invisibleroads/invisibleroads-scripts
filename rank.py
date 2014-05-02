@@ -10,7 +10,7 @@ GOAL_TEMPLATE = '%(duration)s\t%(text)s'
 def run(source_paths, default_time):
     packs = []
     hard_goals = []
-    HOUR_EFFORT = get_effort(relativedelta(hours=1))
+    TWO_HOURS_EFFORT = get_effort(relativedelta(hours=1))
     for source_path in source_paths:
         with open(source_path) as source_file:
             goal_factory = GoalFactory(
@@ -20,7 +20,7 @@ def run(source_paths, default_time):
                 if not absolute_impact:
                     continue
                 effort = get_effort(goal.duration)
-                if effort > HOUR_EFFORT:
+                if effort > TWO_HOURS_EFFORT:
                     hard_goals.append(goal)
                 score = absolute_impact / float(effort)
                 packs.append((score, goal))
