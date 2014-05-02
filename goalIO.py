@@ -100,6 +100,7 @@ class Goal(object):
             self.__dict__,
             leadspace=leadspace_string,
             status=status_string,
+            impact=impact_string,
             time=time_string,
             duration=duration_string,
             properties=properties_string)
