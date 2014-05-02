@@ -2,11 +2,15 @@
 from dateutil.relativedelta import relativedelta
 from goalIO import GoalFactory, get_whenIO, yield_leaf
 from script import get_argument_parser, get_args
-from whenIO import format_duration
+
+
+GOAL_TEMPLATE = '%(duration)s\t%(text)s'
 
 
 def run(source_paths, default_time):
     packs = []
+    hard_goals = []
+    HOUR_EFFORT = get_effort(relativedelta(hours=1))
     for source_path in source_paths:
         with open(source_path) as source_file:
             goal_factory = GoalFactory(
@@ -15,13 +19,20 @@ def run(source_paths, default_time):
                 absolute_impact = goal.absolute_impact
                 if not absolute_impact:
                     continue
-                score = absolute_impact / float(get_effort(goal.duration))
+                effort = get_effort(goal.duration)
+                if effort > HOUR_EFFORT:
+                    hard_goals.append(goal)
+                score = absolute_impact / float(effort)
                 packs.append((score, goal))
+    if hard_goals:
+        print 'Whoops! Please split these goals into smaller steps.'
+        for goal in hard_goals:
+            print '\t%s' % goal.format(GOAL_TEMPLATE)
+        return
     for score, goal in sorted(packs, reverse=True):
-        print '%s\t%s\t%s' % (
+        print '%s\t%s' % (
             goal.absolute_impact,
-            format_duration(goal.duration, style='letters'),
-            goal.text)
+            goal.format(GOAL_TEMPLATE))
 
 
 def get_effort(duration):
