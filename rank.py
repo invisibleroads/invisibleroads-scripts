@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from dateutil.relativedelta import relativedelta
-from goalIO import GoalFactory, get_whenIO, yield_leaf
+from goalIO import GoalFactory, get_whenIO, yield_leaf, STATUS_DONE
 from script import get_argument_parser, get_args
 
 
@@ -17,7 +17,7 @@ def run(source_paths, default_time):
                 get_whenIO(source_file, default_time=default_time))
             for goal in yield_leaf(goal_factory.parse_hierarchy(source_file)):
                 absolute_impact = goal.absolute_impact
-                if not absolute_impact:
+                if not absolute_impact or goal.status >= STATUS_DONE:
                     continue
                 effort = get_effort(goal.duration)
                 if effort > TWO_HOURS_EFFORT:
