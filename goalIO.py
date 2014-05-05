@@ -207,7 +207,7 @@ def format_impact(impact):
 
 
 def format_properties_string(properties):
-    string = ' '.join(properties).strip()
+    string = ' '.join(_.strip() for _ in properties if _.strip()).strip()
     return ' [%s]' % string if string else ''
 
 
