@@ -52,7 +52,7 @@ def format_lineage(goal):
     while goal.parent:
         lineage.append(goal.parent)
         goal = goal.parent
-    template = '%(leadspace)s%(text)s%(when)s'
+    template = '%(leadspace)s%(text)s%(time)s'
     return '\n'.join(_.format(template) for _ in reversed(lineage))
 
 
