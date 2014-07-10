@@ -1,11 +1,11 @@
-# US/Pacific 5/1/2014
+# US/Pacific 7/3/2014
 Integrate with gdrive [+100]
-    = Get *.goals documents [+10  30m]
-    Get text of document [+20  30m]
-    Replace text of document [+20  30m]
-    Create document [+30  15m]
-    Check if document exists [+10  15m]
-    Process tabs properly [+10  30m]
+    = Get *.goals documents [+10 30m]
+    Get text of document [+20 30m]
+    Replace text of document [+20 30m]
+    Create document [+30 15m]
+    Check if document exists [+10 15m]
+    Process tabs properly [+10 30m]
 Let user compress timeline scale into weeks or months
 Use distribute setup.py intead of bash setup.sh
 Synchronize with Google Calendar
