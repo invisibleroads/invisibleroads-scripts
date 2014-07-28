@@ -37,7 +37,7 @@ def run(source_paths, default_time):
 
 def get_effort(duration):
     if not duration:
-        return get_effort(relativedelta(days=1))
+        return get_effort(relativedelta(hours=2))
     convert_microseconds = lambda microseconds: microseconds
     convert_seconds = lambda seconds: seconds * 1000000
     convert_minutes = lambda minutes: convert_seconds(minutes * 60)
