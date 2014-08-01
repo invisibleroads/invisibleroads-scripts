@@ -27,6 +27,8 @@ def get_argument_parser():
         '-z', '--default_time', metavar='TIME', default=datetime.time(18),
         type=lambda x: dateutil.parser.parse(x).time(),
         help='default time if unspecified, e.g. 6pm')
+    argument_parser.add_argument(
+        '-v', '--verbose', action='store_true')
     return argument_parser
 
 

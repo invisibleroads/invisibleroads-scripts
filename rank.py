@@ -7,7 +7,7 @@ from script import get_argument_parser, get_args
 GOAL_TEMPLATE = '%(duration)s\t%(text)s'
 
 
-def run(source_paths, default_time, maximum_count):
+def run(source_paths, default_time, maximum_count, verbose):
     packs = []
     for source_path in source_paths:
         with open(source_path) as source_file:
@@ -15,7 +15,11 @@ def run(source_paths, default_time, maximum_count):
                 get_whenIO(source_file, default_time=default_time))
             for goal in yield_leaf(goal_factory.parse_hierarchy(source_file)):
                 absolute_impact = goal.absolute_impact
-                if not absolute_impact or goal.status >= STATUS_DONE:
+                if goal.status >= STATUS_DONE:
+                    continue
+                if not absolute_impact:
+                    if verbose:
+                        print 'Missing impact: %s' % goal.format()
                     continue
                 effort = get_effort(goal.duration)
                 score = absolute_impact / float(effort)
@@ -54,4 +58,4 @@ if __name__ == '__main__':
         '-n', metavar='COUNT', type=int, default=10,
         help='maximum number of goals to show')
     args = get_args(argument_parser)
-    run(args.source_paths, args.default_time, args.n)
+    run(args.source_paths, args.default_time, args.n, args.verbose)
