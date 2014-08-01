@@ -11,7 +11,7 @@ from goalIO import yield_goal, STATUS_DONE
 from script import get_argument_parser, get_args, APPLICATION_NAME, CONFIG_NAME
 
 
-def run(source_paths, default_time, day_count, target_timezone):
+def run(source_paths, default_time, day_count, target_timezone, verbose):
     goals = []
     target_whenIO = WhenIO(target_timezone)
     # Parse
@@ -20,7 +20,7 @@ def run(source_paths, default_time, day_count, target_timezone):
         for goal in yield_goal(source_path, default_time):
             goal.calendar = calendar_name
             goals.append(goal)
-    goals, warnings = filter_goals(goals, day_count, target_whenIO)
+    goals, warnings = filter_goals(goals, day_count, target_whenIO, verbose)
     # Format
     template = '%(time)s\t%(duration)s\t%(text)s'
     lines = format_schedule(goals, template, target_whenIO)
@@ -38,15 +38,19 @@ def get_calendar_name(file_path):
     return calendar_name
 
 
-def filter_goals(goals, day_count, whenIO):
+def filter_goals(goals, day_count, whenIO, verbose):
     selected_goals = []
     count_by_description = defaultdict(int)
     time_limit = whenIO._combine_date_time(
         whenIO._today + datetime.timedelta(days=day_count + 1))
     for goal in goals:
         if not goal.duration:
+            if verbose:
+                print 'Missing duration: %s' % goal.format()
             count_by_description['missing duration'] += 1
         if not goal.start:
+            if verbose:
+                print 'Not scheduled: %s' % goal.format()
             count_by_description['not scheduled'] += 1
             continue
         for selected_goal in selected_goals:
@@ -187,14 +191,19 @@ def get_primary_calendar(service):
 if __name__ == '__main__':
     argument_parser = get_argument_parser()
     argument_parser.add_argument(
-        '-d', '--days', metavar='DAYS', default=2, type=int,
+        '-v', '--verbose', action='store_true')
+    argument_parser.add_argument(
+        '-d', '--days', metavar='DAYS',
+        default=2, type=int,
         help='number of days to look ahead')
     argument_parser.add_argument(
-        '-s', '--synchronize', metavar='EMAIL', nargs='?', default=False, const=True,
+        '-s', '--synchronize', metavar='EMAIL', nargs='?',
+        default=False, const=True,
         help='synchronize calendar and clone permissions')
     args = get_args(argument_parser)
     goals = run(
-        args.source_paths, args.default_time, args.days, args.target_timezone)
+        args.source_paths, args.default_time, args.days, args.target_timezone,
+        args.verbose)
     if goals and args.synchronize:
         if not args.client_id:
             config_path = os.path.join(args.config_folder, CONFIG_NAME)
