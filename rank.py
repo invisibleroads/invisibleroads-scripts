@@ -7,7 +7,7 @@ from script import get_argument_parser, get_args
 GOAL_TEMPLATE = '%(duration)s\t%(text)s'
 
 
-def run(source_paths, default_time):
+def run(source_paths, default_time, maximum_count):
     packs = []
     hard_goals = []
     TWO_HOURS_EFFORT = get_effort(relativedelta(hours=2))
@@ -29,7 +29,7 @@ def run(source_paths, default_time):
         for goal in hard_goals:
             print '\t%s' % goal.format(GOAL_TEMPLATE)
         return
-    for score, goal in sorted(packs, reverse=True):
+    for score, goal in sorted(packs, reverse=True)[:maximum_count]:
         print '%s\t%s' % (
             goal.absolute_impact,
             goal.format(GOAL_TEMPLATE))
@@ -59,5 +59,8 @@ def get_effort(duration):
 
 if __name__ == '__main__':
     argument_parser = get_argument_parser()
+    argument_parser.add_argument(
+        '-n', metavar='COUNT', type=int, default=10,
+        help='maximum number of goals to show')
     args = get_args(argument_parser)
-    run(args.source_paths, args.default_time)
+    run(args.source_paths, args.default_time, args.n)
