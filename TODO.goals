@@ -1,6 +1,6 @@
 # US/Pacific 7/3/2014
 Integrate with gdrive [+100]
-    = Get *.goals documents [+10 30m]
+    Get *.goals documents [+10 30m]
     Get text of document [+20 30m]
     Replace text of document [+20 30m]
     Create document [+30 15m]
@@ -11,3 +11,6 @@ Use distribute setup.py intead of bash setup.sh
 Synchronize with Google Calendar
     Investigate Invalid Grant error after user revokes access
 Update to Python 3
+Make command-line invisibleroads with subcommands
+    Rename invisibleroads to invisibleroads-system
+Check whether logs exist in separate folder
