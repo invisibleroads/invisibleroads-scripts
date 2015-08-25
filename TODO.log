@@ -1,6 +1,0 @@
-# UTC 07/03/2014
-+ Add impact for ranking [05/01/2014]
-+ Add option to glob goal files recursively [02/03/2014]
-+ Default to *.goals if no source_paths are specified [02/03/2014]
-+ Default to -u [02/03/2014]
-+ Save done or cancelled goals to log for later analysis [10/27/2013]
