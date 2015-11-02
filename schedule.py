@@ -46,11 +46,11 @@ def filter_goals(goals, day_count, whenIO, verbose):
     for goal in goals:
         if not goal.duration:
             if verbose:
-                print 'Missing duration: %s' % goal.format()
+                print('Missing duration: %s' % goal.format())
             count_by_description['missing duration'] += 1
         if not goal.start:
             if verbose:
-                print 'Not scheduled: %s' % goal.format()
+                print('Not scheduled: %s' % goal.format())
             count_by_description['not scheduled'] += 1
             continue
         for selected_goal in selected_goals:
@@ -69,7 +69,7 @@ def filter_goals(goals, day_count, whenIO, verbose):
         else:
             time_range = 'the next %s days' % day_count
         warnings.append('Whoops! No goals scheduled for %s.' % time_range)
-    for description, count in count_by_description.iteritems():
+    for description, count in count_by_description.items():
         warnings.append('%s %s' % (count, description))
     return selected_goals, warnings
 
@@ -205,8 +205,8 @@ if __name__ == '__main__':
     if goals and args.synchronize:
         if not args.client_id:
             config_path = os.path.join(args.config_folder, CONFIG_NAME)
-            print 'Parameters missing in %s:' % config_path
-            print 'client_id, client_secret, developer_key'
+            print('Parameters missing in %s:' % config_path)
+            print('client_id, client_secret, developer_key')
         try:
             user_email = args.synchronize if '@' in args.synchronize else ''
         except TypeError:
