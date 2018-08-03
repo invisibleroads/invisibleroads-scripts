@@ -31,7 +31,6 @@ class MissionDocument(object):
         for heading, text in self._text_by_heading.items():
             lines.append('# ' + heading.title())
             lines.append(text)
-            lines.append('')
         return '\n'.join(lines)
 
     def save(self, target_path):
@@ -41,13 +40,12 @@ class MissionDocument(object):
 
 def run(mission_text_paths):
     mission_texts = [open(_).read() for _ in mission_text_paths]
-    mission_documents = [MissionDocument() for _ in mission_texts]
+    mission_documents = [MissionDocument(_) for _ in mission_texts]
     lines_by_date, pack_by_id = prepare_lines_by_date(mission_documents)
     schedule_text = call_editor('schedule.md', format_schedule_text(
         lines_by_date))
     text_by_date = parse_text_by_key(schedule_text, '## ', parse_date)
-    lines_by_date = {k: v.splitlines() for k, v in text_by_date.items()}
-    pack_by_id = process_lines_by_date(lines_by_date, pack_by_id)
+    pack_by_id = process_text_by_date(text_by_date, pack_by_id)
     mission_documents = update_mission_documents(mission_documents, pack_by_id)
     for path, document in zip(mission_text_paths, mission_documents):
         document.save(path)
@@ -76,9 +74,8 @@ def format_schedule_text(lines_by_date):
         schedule_lines = []
     for date in sorted(lines_by_date.keys()):
         lines = lines_by_date[date]
-        schedule_lines.append('## ' + date.strftime(DATE_FORMAT))
+        schedule_lines.append('\n## ' + date.strftime(DATE_FORMAT) + '\n')
         schedule_lines.extend(lines)
-        schedule_lines.append('')
     return '\n'.join(schedule_lines).strip()
 
 
@@ -118,17 +115,18 @@ def prepare_lines_by_date(mission_documents):
     return lines_by_date, pack_by_id
 
 
-def process_lines_by_date(lines_by_date, pack_by_id):
-    for date, line in lines_by_date.items():
-        line_match = ID_PATTERN.search(line)
-        if not line_match:
-            continue
-        line_id_text = line_match.group(1)
-        mission_index_string, line_index_string = line_id_text.split(':')
-        mission_index = int(mission_index_string)
-        line_index = int(line_index_string)
-        line_id = mission_index, line_index
-        pack_by_id[line_id] = date, ID_PATTERN.sub('', line).rstrip()
+def process_text_by_date(text_by_date, pack_by_id):
+    for date, text in text_by_date.items():
+        for line in text.splitlines():
+            line_match = ID_PATTERN.search(line)
+            if not line_match:
+                continue
+            line_id_text = line_match.group(1)
+            mission_index_string, line_index_string = line_id_text.split(':')
+            mission_index = int(mission_index_string)
+            line_index = int(line_index_string)
+            line_id = mission_index, line_index
+            pack_by_id[line_id] = date, ID_PATTERN.sub('', line).rstrip()
     return pack_by_id
 
 
@@ -149,5 +147,5 @@ def update_mission_documents(mission_documents, pack_by_id):
 
 
 if __name__ == '__main__':
-    mission_text_paths = glob('*.md')
+    mission_text_paths = glob('**/*.md', recursive=True)
     run(mission_text_paths)
