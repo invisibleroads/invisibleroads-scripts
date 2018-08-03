@@ -34,72 +34,23 @@ class MissionDocument(object):
             lines.append('')
         return '\n'.join(lines)
 
+    def save(self, target_path):
+        open(target_path, 'wt').write(self.render())
+        return target_path
+
 
 def run(mission_text_paths):
     mission_texts = [open(_).read() for _ in mission_text_paths]
-    mission_documents = [MissionDocument(_) for _ in mission_texts]
-
-    lines_by_timestamp = defaultdict(list)
-    pack_by_id = {}
-    for mission_index, mission_document in enumerate(mission_documents):
-        try:
-            schedule_text = mission_document['schedule']
-        except KeyError:
-            continue
-        line_index = 0
-        text_by_timestamp = parse_text_by_key(
-            schedule_text, '## ', parse_timestamp)
-        for timestamp, text in text_by_timestamp.items():
-            lines = []
-            for line in text.splitlines():
-                line_id = mission_index, line_index
-                pack_by_id[line_id] = timestamp, line
-                if not line:
-                    continue
-                lines.append(line + ' [%s:%s]' % line_id)
-                line_index += 1
-            lines_by_timestamp[timestamp].extend(lines)
-    schedule_text = format_schedule_text(lines_by_timestamp)
-
-    with TemporaryStorage() as storage:
-        schedule_text_path = join(storage.folder, 'schedule.md')
-        with open(schedule_text_path, 'wt') as schedule_text_file:
-            schedule_text_file.write(schedule_text)
-            schedule_text_file.flush()
-            call([EDITOR_COMMAND, schedule_text_path])
-        with open(schedule_text_path, 'rt') as schedule_text_file:
-            schedule_text = schedule_text_file.read()
-
-    text_by_timestamp = parse_text_by_key(
-        schedule_text, '## ', parse_timestamp)
-
-    for timestamp, text in text_by_timestamp.items():
-        for line in text.splitlines():
-            line_match = ID_PATTERN.search(line)
-            if not line_match:
-                continue
-            line_id_text = line_match.group(1)
-            mission_index_string, line_index_string = line_id_text.split(':')
-            mission_index = int(mission_index_string)
-            line_index = int(line_index_string)
-            line_id = mission_index, line_index
-            pack_by_id[line_id] = timestamp, ID_PATTERN.sub('', line).rstrip()
-
-    packs_by_mission_index = defaultdict(list)
-    for line_id, (timestamp, line) in pack_by_id.items():
-        mission_index, line_index = line_id
-        packs_by_mission_index[mission_index].append((
-            timestamp, line_index, line))
-    for mission_index, packs in packs_by_mission_index.items():
-        mission_document = mission_documents[mission_index]
-        lines_by_timestamp = defaultdict(list)
-        for timestamp, line_index, line in sorted(packs, key=lambda _: _[1]):
-            lines_by_timestamp[timestamp].append(line)
-        mission_document['schedule'] = '\n' + format_schedule_text(
-            lines_by_timestamp)
-
+    mission_documents = [MissionDocument() for _ in mission_texts]
+    lines_by_date, pack_by_id = prepare_lines_by_date(mission_documents)
+    schedule_text = call_editor('schedule.md', format_schedule_text(
+        lines_by_date))
+    text_by_date = parse_text_by_key(schedule_text, '## ', parse_date)
+    lines_by_date = {k: v.splitlines() for k, v in text_by_date.items()}
+    pack_by_id = process_lines_by_date(lines_by_date, pack_by_id)
+    mission_documents = update_mission_documents(mission_documents, pack_by_id)
     for path, document in zip(mission_text_paths, mission_documents):
-        open(path, 'wt').write(document.render())
+        document.save(path)
 
 
 def parse_text_by_key(text, key_prefix, parse_key):
@@ -114,21 +65,87 @@ def parse_text_by_key(text, key_prefix, parse_key):
     return {key: '\n'.join(lines) for key, lines in lines_by_key.items()}
 
 
-def parse_timestamp(line):
+def parse_date(line):
     return datetime.strptime(line, DATE_FORMAT)
 
 
-def format_schedule_text(lines_by_timestamp):
+def format_schedule_text(lines_by_date):
     try:
-        schedule_lines = lines_by_timestamp.pop('')
+        schedule_lines = lines_by_date.pop('')
     except KeyError:
         schedule_lines = []
-    for timestamp in sorted(lines_by_timestamp.keys()):
-        lines = lines_by_timestamp[timestamp]
-        schedule_lines.append('## ' + timestamp.strftime(DATE_FORMAT))
+    for date in sorted(lines_by_date.keys()):
+        lines = lines_by_date[date]
+        schedule_lines.append('## ' + date.strftime(DATE_FORMAT))
         schedule_lines.extend(lines)
         schedule_lines.append('')
     return '\n'.join(schedule_lines).strip()
+
+
+def call_editor(file_name, file_text):
+    with TemporaryStorage() as storage:
+        text_path = join(storage.folder, file_name)
+        with open(text_path, 'wt') as text_file:
+            text_file.write(file_text)
+            text_file.flush()
+            call([EDITOR_COMMAND, text_path])
+        with open(text_path, 'rt') as text_file:
+            file_text = text_file.read()
+    return file_text
+
+
+def prepare_lines_by_date(mission_documents):
+    lines_by_date = defaultdict(list)
+    pack_by_id = {}
+    for mission_index, mission_document in enumerate(mission_documents):
+        try:
+            schedule_text = mission_document['schedule']
+        except KeyError:
+            continue
+        line_index = 0
+        text_by_date = parse_text_by_key(
+            schedule_text, '## ', parse_date)
+        for date, text in text_by_date.items():
+            lines = []
+            for line in text.splitlines():
+                line_id = mission_index, line_index
+                pack_by_id[line_id] = date, line
+                if not line:
+                    continue
+                lines.append(line + ' [%s:%s]' % line_id)
+                line_index += 1
+            lines_by_date[date].extend(lines)
+    return lines_by_date, pack_by_id
+
+
+def process_lines_by_date(lines_by_date, pack_by_id):
+    for date, line in lines_by_date.items():
+        line_match = ID_PATTERN.search(line)
+        if not line_match:
+            continue
+        line_id_text = line_match.group(1)
+        mission_index_string, line_index_string = line_id_text.split(':')
+        mission_index = int(mission_index_string)
+        line_index = int(line_index_string)
+        line_id = mission_index, line_index
+        pack_by_id[line_id] = date, ID_PATTERN.sub('', line).rstrip()
+    return pack_by_id
+
+
+def update_mission_documents(mission_documents, pack_by_id):
+    packs_by_mission_index = defaultdict(list)
+    for line_id, (date, line) in pack_by_id.items():
+        mission_index, line_index = line_id
+        packs_by_mission_index[mission_index].append((
+            date, line_index, line))
+    for mission_index, packs in packs_by_mission_index.items():
+        mission_document = mission_documents[mission_index]
+        lines_by_date = defaultdict(list)
+        for date, line_index, line in sorted(packs, key=lambda _: _[1]):
+            lines_by_date[date].append(line)
+        mission_document['schedule'] = '\n' + format_schedule_text(
+            lines_by_date)
+    return mission_documents
 
 
 if __name__ == '__main__':
