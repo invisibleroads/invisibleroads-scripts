@@ -11,7 +11,7 @@ from subprocess import call
 
 EDITOR_COMMAND = environ.get('EDITOR', 'vim')
 DATE_FORMAT = '%Y%m%d'
-ID_PATTERN = re.compile(r'\[(.*?)\]')
+ID_PATTERN = re.compile(r'\[(\d+):(\d+)\]')
 
 
 class MissionDocument(object):
@@ -121,8 +121,7 @@ def process_text_by_date(text_by_date, pack_by_id):
             line_match = ID_PATTERN.search(line)
             if not line_match:
                 continue
-            line_id_text = line_match.group(1)
-            mission_index_string, line_index_string = line_id_text.split(':')
+            mission_index_string, line_index_string = line_match.groups()
             mission_index = int(mission_index_string)
             line_index = int(line_index_string)
             line_id = mission_index, line_index
