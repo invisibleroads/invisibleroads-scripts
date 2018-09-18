@@ -34,7 +34,7 @@ class MissionDocument(object):
         return '\n'.join(lines)
 
     def save(self, target_path):
-        open(target_path, 'wt').write(self.render())
+        open(target_path, 'wt').write(self.render() + '\n')
         return target_path
 
 
