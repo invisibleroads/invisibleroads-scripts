@@ -141,7 +141,7 @@ def update_mission_documents(mission_documents, pack_by_id):
         for date, line_index, line in sorted(packs, key=lambda _: _[1]):
             lines_by_date[date].append(line)
         mission_document['schedule'] = '\n' + format_schedule_text(
-            lines_by_date)
+            lines_by_date) + '\n'
     return mission_documents
 
 
