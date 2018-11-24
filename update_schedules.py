@@ -2,14 +2,11 @@ import re
 from collections import defaultdict
 from datetime import datetime
 from glob import glob
-from invisibleroads_macros.disk import TemporaryStorage
 from invisibleroads_macros.iterable import OrderedDefaultDict
-from os import environ
-from os.path import join
-from subprocess import call
+
+from macros import call_editor
 
 
-EDITOR_COMMAND = environ.get('EDITOR', 'vim')
 DATE_FORMAT = '%Y%m%d'
 ID_PATTERN = re.compile(r'\[(\d+):(\d+)\]')
 
@@ -77,18 +74,6 @@ def format_schedule_text(lines_by_date):
         schedule_lines.append('\n## ' + date.strftime(DATE_FORMAT) + '\n')
         schedule_lines.extend(lines)
     return '\n'.join(schedule_lines).strip()
-
-
-def call_editor(file_name, file_text):
-    with TemporaryStorage() as storage:
-        text_path = join(storage.folder, file_name)
-        with open(text_path, 'wt') as text_file:
-            text_file.write(file_text)
-            text_file.flush()
-            call([EDITOR_COMMAND, text_path])
-        with open(text_path, 'rt') as text_file:
-            file_text = text_file.read()
-    return file_text
 
 
 def prepare_lines_by_date(mission_documents):
