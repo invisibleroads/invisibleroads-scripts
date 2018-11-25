@@ -38,7 +38,7 @@ def format_goal_text(goals, show_archived=False):
     lines = []
     indent_depth = 0
     for g in get_roots(goals):
-        lines.extend(format_goal_plan(g, indent_depth, show_archived))
+        lines.append(format_plan_text(g, indent_depth, show_archived))
     return '\n'.join(lines)
 
 
@@ -59,25 +59,31 @@ def format_schedule_text(goals, show_archived=False):
 
 def format_mission_text(goal):
     lines = []
-    lines.append('# Mission')
-    lines.append(goal.render_text())
-    lines.append('# Log')
-    lines.append(format_log_text(goal.notes))
-    lines.append('# Schedule')
-    lines.append(format_schedule_text(goal.children, show_archived=False))
-    lines.append('# Tasks')
-    lines.append(format_goal_plan(goal, indent_depth=0, show_archived=True))
-    return '\n\n'.join(lines)
+
+    def process_section(section_name, section_text):
+        lines.append('# %s' % section_name)
+        if section_text:
+            lines.append(section_text)
+        lines.append('')
+
+    process_section('Mission', goal.render_text())
+    process_section('Log', format_log_text(goal.notes))
+    process_section('Schedule', format_schedule_text(
+        goal.children, show_archived=False))
+    process_section('Tasks', '\n'.join(format_plan_text(
+        _, indent_depth=1, show_archived=True,
+    ) for _ in goal.children))
+    return '\n'.join(lines)
 
 
-def format_goal_plan(goal, indent_depth, show_archived):
+def format_plan_text(goal, indent_depth, show_archived):
     if not show_archived:
         if goal.state in [GoalState.Cancelled, GoalState.Done]:
             return []
     lines = [goal.render_text(indent_depth)]
     for child in goal.sorted_children:
-        lines.extend(format_goal_plan(child, indent_depth + 1, show_archived))
-    return lines
+        lines.append(format_plan_text(child, indent_depth + 1, show_archived))
+    return '\n'.join(lines)
 
 
 def format_log_text(notes):
@@ -123,8 +129,9 @@ def parse_schedule_text(text):
             continue
         goal = Goal.parse_text(line)
         goal_datetime = goal.schedule_datetime
-        goal.schedule_datetime = goal_date.replace(
-            hour=goal_datetime.hour, minute=goal_datetime.minute)
+        if goal_date:
+            goal.schedule_datetime = goal_date.replace(
+                hour=goal_datetime.hour, minute=goal_datetime.minute)
         goals.append(goal)
     return goals
 
@@ -165,7 +172,7 @@ def parse_log_text(text):
         note_lines.clear()
 
     for line in text.splitlines():
-        timestamp_text, _, id_text = text.partition(SEPARATOR)
+        timestamp_text, _, id_text = line.partition(SEPARATOR)
         try:
             note_datetime = parse_timestamp(timestamp_text)
             note_id = id_text.strip()

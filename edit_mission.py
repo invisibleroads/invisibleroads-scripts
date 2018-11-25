@@ -1,20 +1,20 @@
 from argparse import ArgumentParser
 
 from macros import call_editor
-from models import Goal, db
-from routines import format_mission_text, parse_mission_text, get_goals
+from models import Goal, GoalState, db
+from routines import format_mission_text, parse_mission_text
 
 
 if __name__ == '__main__':
     argument_parser = ArgumentParser()
-    argument_parser.add_argument('--goal_id')
+    argument_parser.add_argument('goal_id', nargs='?')
     args = argument_parser.parse_args()
-    goal = Goal()
     goal_id = args.goal_id
-    if goal_id:
-        goals = get_goals([goal_id], with_notes=True)
-        if goals:
-            goal = goals[0]
+    if not goal_id:
+        goal = db.query(Goal).filter_by(
+            state=GoalState.Pending).order_by(Goal.order).first()
+    if goal_id or not goal:
+        goal = Goal.get(goal_id)
     while True:
         mission_text = call_editor('goal.md', format_mission_text(goal))
         try:

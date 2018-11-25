@@ -12,7 +12,7 @@ from sqlalchemy.types import DateTime, Enum, Integer, String
 ID_LENGTH = 7
 INDENT = '    '
 INDENT_PATTERN = re.compile(r'^\s+')
-SEPARATOR = ' # '
+SEPARATOR = '# '
 
 
 Base = declarative_base()
@@ -117,10 +117,10 @@ class Goal(IDMixin, TextMixin, Base):
         return schedule_datetime, goal_id
 
     def render_text(self, indent_depth=0):
-        return '%s%s%s %s%s' % (
+        return '%s%s%s  %s%s' % (
             INDENT * indent_depth,
             self.prefix,
-            self.text,
+            self.text or 'Set a goal',
             SEPARATOR,
             self.suffix)
 
@@ -138,6 +138,8 @@ class Goal(IDMixin, TextMixin, Base):
         terms = []
         if self.schedule_datetime:
             terms.append(format_timestamp(self.schedule_datetime))
+        if self.notes:
+            terms.append('...')
         terms.append(self.id)
         return ' '.join(terms)
 
@@ -154,8 +156,10 @@ class Note(IDMixin, TextMixin, Base):
     goal_id = Column(String, ForeignKey('goal.id'))
 
     def render_text(self):
-        return '%s\n%s' % (
+        return '%s  %s%s\n%s' % (
             format_timestamp(self.id_datetime),
+            SEPARATOR,
+            self.id,
             self.text)
 
 
