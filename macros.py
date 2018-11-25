@@ -30,3 +30,8 @@ def parse_text_by_key(text, key_prefix, parse_key):
             continue
         lines_by_key[key].append(line)
     return {key: '\n'.join(lines) for key, lines in lines_by_key.items()}
+
+
+def sort_by_attribute(items, attribute_name):
+    packs = [(getattr(_, attribute_name), _) for _ in items]
+    return [_[1] for _ in sorted(packs, key=lambda _: _[0])]

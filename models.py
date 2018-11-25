@@ -8,6 +8,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.types import DateTime, Enum, Integer, String
 
+from macros import sort_by_attribute
 from settings import DATABASE_PATH, ID_LENGTH
 
 
@@ -145,11 +146,12 @@ class Goal(IDMixin, TextMixin, Base):
         return ' '.join(terms)
 
     @property
+    def sorted_notes(self):
+        return sort_by_attribute(self.notes, 'id_datetime')
+
+    @property
     def sorted_children(self):
-        sorted_packs = sorted([
-            (g.order, g) for g in self.children
-        ], key=lambda _: _[0])
-        return [_[1] for _ in sorted_packs]
+        return sort_by_attribute(self.children, 'order')
 
 
 class Note(IDMixin, TextMixin, Base):

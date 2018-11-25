@@ -35,16 +35,17 @@ def get_roots(goals):
 
 
 def format_goal_text(goals, show_archived=False):
-    lines = []
+    roots = get_roots(goals)
     indent_depth = 0
-    for g in get_roots(goals):
-        lines.append(format_plan_text(g, indent_depth, show_archived))
-    return '\n'.join(lines)
+    return '\n'.join(prepare_plan_lines(roots, indent_depth, show_archived))
 
 
 def format_schedule_text(goals, show_archived=False):
     goals_by_date = defaultdict(list)
-    for g in goals:
+    remaining_goals = list(goals)
+    while remaining_goals:
+        g = remaining_goals.pop()
+        remaining_goals.extend(g.children)
         goal_datetime = g.schedule_datetime
         if not goal_datetime:
             continue
@@ -60,30 +61,30 @@ def format_schedule_text(goals, show_archived=False):
 def format_mission_text(goal):
     lines = []
 
-    def process_section(section_name, section_text):
+    def prepare_section(section_name, section_text):
         lines.append('# %s' % section_name)
         if section_text:
             lines.append(section_text)
         lines.append('')
 
-    process_section('Mission', goal.render_text())
-    process_section('Log', format_log_text(goal.notes))
-    process_section('Schedule', format_schedule_text(
+    prepare_section('Mission', goal.render_text())
+    prepare_section('Log', format_log_text(goal.sorted_notes))
+    prepare_section('Schedule', format_schedule_text(
         goal.children, show_archived=False))
-    process_section('Tasks', '\n'.join(format_plan_text(
-        _, indent_depth=1, show_archived=True,
-    ) for _ in goal.children))
+    prepare_section('Tasks', '\n'.join(prepare_plan_lines(
+        goal.children, indent_depth=1, show_archived=True)))
     return '\n'.join(lines)
 
 
-def format_plan_text(goal, indent_depth, show_archived):
-    if not show_archived:
-        if goal.state in [GoalState.Cancelled, GoalState.Done]:
-            return []
-    lines = [goal.render_text(indent_depth)]
-    for child in goal.sorted_children:
-        lines.append(format_plan_text(child, indent_depth + 1, show_archived))
-    return '\n'.join(lines)
+def prepare_plan_lines(goals, indent_depth, show_archived):
+    lines = []
+    for g in goals:
+        if not show_archived and g.state != GoalState.Pending:
+            continue
+        lines.append(g.render_text(indent_depth))
+        lines.extend(prepare_plan_lines(
+            g.sorted_children, indent_depth + 1, show_archived))
+    return lines
 
 
 def format_log_text(notes):
@@ -95,6 +96,8 @@ def parse_goal_text(text):
     parent_by_indent_depth = {}
     order = 0
     for line in text.splitlines():
+        if not line.strip():
+            continue
         goal = Goal.parse_text(line)
         goal.order = order = order + 1
         goal_parent = get_parent(goal.indent_depth, parent_by_indent_depth)
@@ -143,7 +146,7 @@ def parse_mission_text(text):
     except (KeyError, IndexError):
         raise ValueError
     goal.notes = parse_log_text(text_by_key.get('log', ''))
-    goals = [goal] + parse_goal_text(text_by_key.get('tasks', ''))
+    goals = parse_goal_text(text_by_key.get('tasks', ''))
     goal_by_id = {_.id: _ for _ in goals}
     for g in parse_schedule_text(text_by_key.get('schedule', '')):
         try:
@@ -152,7 +155,10 @@ def parse_mission_text(text):
             goals.append(goal)
         else:
             goal.schedule_datetime = g.schedule_datetime
-    return goals
+    for g in goals:
+        if not g.parents:
+            g.parents.append(goal)
+    return [goal] + goals
 
 
 def parse_log_text(text):
