@@ -2,7 +2,7 @@
 from argparse import ArgumentParser
 
 from macros import call_editor
-from models import db
+from models import format_statistics, db
 from routines import format_goal_text, parse_goal_text, get_goals
 
 
@@ -16,3 +16,4 @@ if __name__ == '__main__':
     for goal in parse_goal_text(goal_text):
         db.add(goal)
         db.commit()
+    print(format_statistics())

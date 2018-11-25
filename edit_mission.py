@@ -2,7 +2,7 @@
 from argparse import ArgumentParser
 
 from macros import call_editor
-from models import Goal, GoalState, db
+from models import Goal, GoalState, format_statistics, db
 from routines import format_mission_text, parse_mission_text
 
 
@@ -26,3 +26,4 @@ if __name__ == '__main__':
     for goal in goals:
         db.add(goal)
         db.commit()
+    print(format_statistics())

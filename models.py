@@ -9,12 +9,12 @@ from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.types import DateTime, Enum, Integer, String
 
 from macros import sort_by_attribute
-from settings import DATABASE_PATH, ID_LENGTH
+from settings import DATABASE_PATH, ID_LENGTH, INDENT, WITH_UTC
 
 
-INDENT = '    '
 INDENT_PATTERN = re.compile(r'^\s+')
 SEPARATOR = '# '
+DATETIME = datetime.utcnow() if WITH_UTC else datetime.now()
 
 
 Base = declarative_base()
@@ -32,7 +32,7 @@ class GoalState(enum.IntEnum):
 
 class IDMixin(object):
     id = Column(String, primary_key=True)
-    id_datetime = Column(DateTime, default=datetime.utcnow)
+    id_datetime = Column(DateTime, default=DATETIME)
 
     @classmethod
     def get(Class, id):
@@ -49,12 +49,12 @@ class IDMixin(object):
 
 
 class TextMixin(object):
-    text = Column(String)
+    text = Column(String, default='')
     text_datetime = Column(DateTime)
 
     def set_text(self, text):
         if self.text != text:
-            self.text_datetime = datetime.utcnow()
+            self.text_datetime = DATETIME
         self.text = text.strip()
 
 
@@ -73,7 +73,7 @@ class Goal(IDMixin, TextMixin, Base):
 
     def set_state(self, state):
         if self.state != state:
-            self.state_datetime = datetime.utcnow()
+            self.state_datetime = DATETIME
         self.state = state
 
     @classmethod
@@ -122,7 +122,7 @@ class Goal(IDMixin, TextMixin, Base):
         return '%s%s%s  %s%s' % (
             INDENT * indent_depth,
             self.prefix,
-            self.text or 'Set a goal',
+            self.text,
             SEPARATOR,
             self.suffix)
 
@@ -164,6 +164,25 @@ class Note(IDMixin, TextMixin, Base):
             SEPARATOR,
             self.id,
             self.text)
+
+
+def get_statistics():
+    return {
+        'goal_count': db.query(Goal).count(),
+        'goal_pending_count': db.query(Goal).filter_by(
+            state=GoalState.Pending).count(),
+        'note_count': db.query(Note).count(),
+    }
+
+
+def format_statistics():
+    d = get_statistics()
+    lines = []
+    lines.append('%s/%s goals pending' % (
+        d['goal_pending_count'],
+        d['goal_count']))
+    lines.append('%s notes' % d['note_count'])
+    return '\n'.join(lines)
 
 
 engine = create_engine('sqlite:///%s' % DATABASE_PATH, echo=False)

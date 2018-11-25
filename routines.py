@@ -2,7 +2,7 @@ from collections import defaultdict
 from invisibleroads_macros.timestamp import parse_timestamp, DATESTAMP_FORMAT
 from sqlalchemy.orm import joinedload
 
-from macros import parse_text_by_key
+from macros import parse_text_by_key, sort_by_attribute
 from models import Goal, GoalState, Note, db, SEPARATOR
 
 
@@ -53,8 +53,9 @@ def format_schedule_text(goals, show_archived=False):
     lines = []
     for goal_date in sorted(goals_by_date.keys()):
         goals = goals_by_date[goal_date]
+        sorted_goals = sort_by_attribute(goals, 'schedule_datetime')
         lines.append(goal_date.strftime(DATESTAMP_FORMAT))
-        lines.extend([g.render_text(indent_depth=1) for g in goals])
+        lines.extend([g.render_text(indent_depth=1) for g in sorted_goals])
     return '\n'.join(lines)
 
 
@@ -132,7 +133,9 @@ def parse_schedule_text(text):
             continue
         goal = Goal.parse_text(line)
         goal_datetime = goal.schedule_datetime
-        if goal_date:
+        if not goal_datetime:
+            goal.schedule_datetime = goal_date
+        elif goal_date:
             goal.schedule_datetime = goal_date.replace(
                 hour=goal_datetime.hour, minute=goal_datetime.minute)
         goals.append(goal)
@@ -168,14 +171,15 @@ def parse_log_text(text):
     note_lines = []
 
     def process_note(note_id, note_datetime, note_lines):
-        if not note_lines:
+        note_text = '\n'.join(note_lines).strip()
+        note_lines.clear()
+        if not note_text:
             return
         note = Note.get(note_id)
         if note_datetime:
             note.id_datetime = note_datetime
-        note.set_text('\n'.join(note_lines))
+        note.set_text(note_text)
         notes.append(note)
-        note_lines.clear()
 
     for line in text.splitlines():
         timestamp_text, _, id_text = line.partition(SEPARATOR)

@@ -2,7 +2,7 @@
 from argparse import ArgumentParser
 
 from macros import call_editor
-from models import db
+from models import format_statistics, db
 from routines import format_schedule_text, get_goals, parse_schedule_text
 
 
@@ -16,6 +16,4 @@ if __name__ == '__main__':
     for goal in parse_schedule_text(goal_text):
         db.add(goal)
         db.commit()
-
-
-# add notes
+    print(format_statistics())
