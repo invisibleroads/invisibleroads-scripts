@@ -8,8 +8,9 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.types import DateTime, Enum, Integer, String
 
+from settings import DATABASE_PATH, ID_LENGTH
 
-ID_LENGTH = 7
+
 INDENT = '    '
 INDENT_PATTERN = re.compile(r'^\s+')
 SEPARATOR = '# '
@@ -163,7 +164,7 @@ class Note(IDMixin, TextMixin, Base):
             self.text)
 
 
-engine = create_engine('sqlite:///goals.sqlite', echo=False)
+engine = create_engine('sqlite:///%s' % DATABASE_PATH, echo=False)
 Base.metadata.create_all(engine)
 DatabaseSession = sessionmaker(bind=engine)
 DatabaseSession.configure(bind=engine)
