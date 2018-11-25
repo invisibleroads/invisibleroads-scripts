@@ -2,9 +2,8 @@ import re
 from collections import defaultdict
 from datetime import datetime
 from glob import glob
-from invisibleroads_macros.iterable import OrderedDefaultDict
 
-from macros import call_editor
+from macros import call_editor, parse_text_by_key
 
 
 DATE_FORMAT = '%Y%m%d'
@@ -46,18 +45,6 @@ def run(mission_text_paths):
     mission_documents = update_mission_documents(mission_documents, pack_by_id)
     for path, document in zip(mission_text_paths, mission_documents):
         document.save(path)
-
-
-def parse_text_by_key(text, key_prefix, parse_key):
-    lines_by_key = OrderedDefaultDict(list)
-    key = ''
-    for line in text.splitlines():
-        line = line.rstrip()
-        if line.startswith(key_prefix):
-            key = parse_key(line.lstrip(key_prefix))
-            continue
-        lines_by_key[key].append(line)
-    return {key: '\n'.join(lines) for key, lines in lines_by_key.items()}
 
 
 def parse_date(line):

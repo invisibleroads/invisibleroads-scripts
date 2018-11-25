@@ -10,7 +10,8 @@ if __name__ == '__main__':
     argument_parser.add_argument('--all', '-A', action='store_true')
     args = argument_parser.parse_args()
     goals = get_goals()
-    goal_text = call_editor('goal.md', format_goal_text(goals, args.all))
+    goal_text = call_editor('goal.md', format_goal_text(
+        goals, show_archived=args.all))
     for goal in parse_goal_text(goal_text):
         db.add(goal)
         db.commit()
