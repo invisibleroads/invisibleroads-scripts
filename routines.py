@@ -49,11 +49,13 @@ def format_schedule_text(goals, show_archived=False):
         goal_datetime = g.schedule_datetime
         if not goal_datetime:
             continue
-        goals_by_date[goal_datetime.date()].append(g)
+        selected_goals = goals_by_date[goal_datetime.date()]
+        if g not in selected_goals:
+            selected_goals.append(g)
     lines = []
     for goal_date in sorted(goals_by_date.keys()):
-        goals = goals_by_date[goal_date]
-        sorted_goals = sort_by_attribute(goals, 'schedule_datetime')
+        selected_goals = goals_by_date[goal_date]
+        sorted_goals = sort_by_attribute(selected_goals, 'schedule_datetime')
         lines.append(goal_date.strftime(DATESTAMP_FORMAT))
         lines.extend([g.render_text(indent_depth=1) for g in sorted_goals])
     return '\n'.join(lines)
@@ -155,7 +157,7 @@ def parse_mission_text(text):
         try:
             goal = goal_by_id[g.id]
         except KeyError:
-            goals.append(goal)
+            goals.append(g)
         else:
             goal.schedule_datetime = g.schedule_datetime
     for g in goals:

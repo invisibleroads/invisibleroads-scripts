@@ -4,6 +4,7 @@ from datetime import datetime
 from invisibleroads_macros.security import make_random_string
 from invisibleroads_macros.timestamp import format_timestamp, parse_timestamp
 from sqlalchemy import Column, ForeignKey, Table, create_engine
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.types import DateTime, Enum, Integer, String
@@ -40,8 +41,16 @@ class IDMixin(object):
             instance = db.query(Class).get(id)
             if not instance:
                 instance = Class(id=id)
-        else:
+            return instance
+        while True:
             instance = Class(id=make_random_string(ID_LENGTH))
+            db.add(instance)
+            try:
+                db.flush()
+            except IntegrityError:
+                pass
+            else:
+                break
         return instance
 
     def __repr__(self):
