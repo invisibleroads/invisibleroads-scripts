@@ -1,5 +1,6 @@
 import networkx as nx
 from collections import defaultdict
+from datetime import datetime
 from sqlalchemy.orm import joinedload
 
 from macros import (
@@ -152,22 +153,26 @@ def parse_goal_text(text, zone):
 
 def parse_schedule_text(text, zone):
     goals = []
-    goal_date = None
+    new_local_date = None
     for line in text.splitlines():
         line = line.strip()
         try:
-            goal_date = parse_timestamp(line, zone)
+            new_local_date = datetime.strptime(line, DATESTAMP_FORMAT)
         except ValueError:
             pass
         else:
             continue
         goal = Goal.parse_text(line, zone)
-        goal_datetime = goal.schedule_datetime
-        if not goal_datetime:
-            goal.schedule_datetime = goal_date
-        elif goal_date:
-            goal.schedule_datetime = goal_date.replace(
-                hour=goal_datetime.hour, minute=goal_datetime.minute)
+        new_local_datetime = old_local_datetime = zone_datetime(
+            goal.schedule_datetime, UTC_TIMEZONE, zone)
+        if not old_local_datetime:
+            new_local_datetime = new_local_date
+        elif new_local_date:
+            new_local_datetime = new_local_date.replace(
+                hour=old_local_datetime.hour,
+                minute=old_local_datetime.minute)
+        goal.schedule_datetime = zone_datetime(
+            new_local_datetime, zone, UTC_TIMEZONE)
         goals.append(goal)
     return goals
 
