@@ -2,20 +2,19 @@ import enum
 import re
 from datetime import datetime
 from invisibleroads_macros.security import make_random_string
-from invisibleroads_macros.timestamp import format_timestamp, parse_timestamp
 from sqlalchemy import Column, ForeignKey, Table, create_engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.types import DateTime, Enum, Integer, String
 
-from macros import sort_by_attribute
-from settings import DATABASE_PATH, ID_LENGTH, INDENT, WITH_UTC
+from macros import format_timestamp, parse_timestamp, sort_by_attribute
+from settings import DATABASE_PATH, ID_LENGTH, INDENT
 
 
 INDENT_PATTERN = re.compile(r'^\s+')
 SEPARATOR = '# '
-DATETIME = datetime.utcnow() if WITH_UTC else datetime.now()
+DATETIME = datetime.utcnow()
 
 
 Base = declarative_base()
@@ -48,7 +47,7 @@ class IDMixin(object):
             try:
                 db.flush()
             except IntegrityError:
-                pass
+                db.rollback()
             else:
                 break
         return instance
@@ -62,8 +61,11 @@ class TextMixin(object):
     text_datetime = Column(DateTime)
 
     def set_text(self, text):
-        if self.text != text:
-            self.text_datetime = DATETIME
+        if not hasattr(self, 'old_text'):
+            self.old_text = self.text
+        if text in (self.old_text, self.text):
+            return
+        self.text_datetime = DATETIME
         self.text = text.strip()
 
 
@@ -81,15 +83,18 @@ class Goal(IDMixin, TextMixin, Base):
     notes = relationship('Note')
 
     def set_state(self, state):
-        if self.state != state:
-            self.state_datetime = DATETIME
+        if not hasattr(self, 'old_state'):
+            self.old_state = self.state
+        if state in (self.old_state, self.state):
+            return
+        self.state_datetime = DATETIME
         self.state = state
 
     @classmethod
-    def parse_text(Class, text):
+    def parse_text(Class, text, zone):
         goal_text, _, meta_text = text.partition(SEPARATOR)
         goal_state = Class._parse_goal_state(goal_text)
-        schedule_datetime, goal_id = Class._parse_meta_text(meta_text)
+        schedule_datetime, goal_id = Class._parse_meta_text(meta_text, zone)
         indent_depth = Class._parse_indent_depth(goal_text)
         goal = Goal.get(goal_id)
         goal.set_text(goal_text.lstrip(' _+'))
@@ -115,40 +120,30 @@ class Goal(IDMixin, TextMixin, Base):
         return len(match.group())
 
     @staticmethod
-    def _parse_meta_text(text):
+    def _parse_meta_text(text, zone):
         schedule_datetime, goal_id = None, None
         meta_terms = text.split()
         while meta_terms:
             meta_term = meta_terms.pop()
             try:
-                schedule_datetime = parse_timestamp(meta_term)
+                schedule_datetime = parse_timestamp(meta_term, zone)
             except ValueError:
                 if len(meta_term) == ID_LENGTH:
                     goal_id = meta_term
         return schedule_datetime, goal_id
 
-    def render_text(self, indent_depth=0):
+    def render_text(self, zone, indent_depth=0):
         return '%s%s%s  %s%s' % (
             INDENT * indent_depth,
-            self.prefix,
+            PREFIX_BY_STATE[self.state],
             self.text,
             SEPARATOR,
-            self.suffix)
+            self._format_meta_text(zone))
 
-    @property
-    def prefix(self):
-        goal_state = self.state
-        if goal_state == GoalState.Cancelled:
-            return '_ '
-        if goal_state == GoalState.Done:
-            return '+ '
-        return ''
-
-    @property
-    def suffix(self):
+    def _format_meta_text(self, zone):
         terms = []
         if self.schedule_datetime:
-            terms.append(format_timestamp(self.schedule_datetime))
+            terms.append(format_timestamp(self.schedule_datetime, zone))
         if self.notes:
             terms.append('...')
         terms.append(self.id)
@@ -167,35 +162,21 @@ class Note(IDMixin, TextMixin, Base):
     __tablename__ = 'note'
     goal_id = Column(String, ForeignKey('goal.id'))
 
-    def render_text(self):
+    def render_text(self, zone):
         return '%s  %s%s\n%s' % (
-            format_timestamp(self.id_datetime),
+            format_timestamp(self.id_datetime, zone),
             SEPARATOR,
             self.id,
             self.text)
 
 
-def get_statistics():
-    return {
-        'goal_count': db.query(Goal).count(),
-        'goal_pending_count': db.query(Goal).filter_by(
-            state=GoalState.Pending).count(),
-        'note_count': db.query(Note).count(),
-    }
-
-
-def format_statistics():
-    d = get_statistics()
-    lines = []
-    lines.append('%s/%s goals pending' % (
-        d['goal_pending_count'],
-        d['goal_count']))
-    lines.append('%s notes' % d['note_count'])
-    return '\n'.join(lines)
-
-
-engine = create_engine('sqlite:///%s' % DATABASE_PATH, echo=False)
-Base.metadata.create_all(engine)
-DatabaseSession = sessionmaker(bind=engine)
-DatabaseSession.configure(bind=engine)
+PREFIX_BY_STATE = {
+    GoalState.Pending: '',
+    GoalState.Cancelled: '_ ',
+    GoalState.Done: '+ ',
+}
+ENGINE = create_engine('sqlite:///%s' % DATABASE_PATH, echo=False)
+Base.metadata.create_all(ENGINE)
+DatabaseSession = sessionmaker(bind=ENGINE)
+DatabaseSession.configure(bind=ENGINE)
 db = DatabaseSession()

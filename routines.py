@@ -1,8 +1,10 @@
+import networkx as nx
 from collections import defaultdict
-from invisibleroads_macros.timestamp import parse_timestamp, DATESTAMP_FORMAT
 from sqlalchemy.orm import joinedload
 
-from macros import parse_text_by_key, sort_by_attribute
+from macros import (
+    parse_text_by_key, parse_timestamp, sort_by_attribute,
+    zone_datetime, DATESTAMP_FORMAT, UTC_TIMEZONE)
 from models import Goal, GoalState, Note, db, SEPARATOR
 
 
@@ -15,7 +17,9 @@ def get_goals(goal_ids=None, with_notes=False):
     return goal_query.options(
         joinedload(Goal.children),
         joinedload(Goal.parents),
-    ).order_by(Goal.state, Goal.order).all()
+    ).order_by(
+        Goal.state,
+        Goal.order).all()
 
 
 def get_roots(goals):
@@ -34,22 +38,45 @@ def get_roots(goals):
     return roots
 
 
-def format_goal_text(goals, show_archived=False):
+def get_orphan_goals():
+    graph = nx.Graph()
+    pending_goals = db.query(Goal).filter_by(state=GoalState.Pending).all()
+    for goal in pending_goals:
+        for parent in goal.parents:
+            if parent.state != GoalState.Pending:
+                continue
+            graph.add_edge(goal.id, parent.id)
+    orphan_goals = []
+    roots = get_roots(pending_goals)
+    for goal in pending_goals:
+        for root in roots:
+            if goal.id in graph and nx.has_path(graph, goal.id, root.id):
+                break
+        else:
+            orphan_goals.append(goal)
+    return orphan_goals
+
+
+def format_goal_text(goals, zone, show_archived=False):
     roots = get_roots(goals)
     indent_depth = 0
-    return '\n'.join(prepare_plan_lines(roots, indent_depth, show_archived))
+    return '\n'.join(prepare_plan_lines(
+        roots, zone, indent_depth, show_archived))
 
 
-def format_schedule_text(goals, show_archived=False):
+def format_schedule_text(goals, zone, show_archived=False):
     goals_by_date = defaultdict(list)
     remaining_goals = list(goals)
     while remaining_goals:
         g = remaining_goals.pop()
         remaining_goals.extend(g.children)
-        goal_datetime = g.schedule_datetime
-        if not goal_datetime:
+        if not show_archived and g.state != GoalState.Pending:
             continue
-        selected_goals = goals_by_date[goal_datetime.date()]
+        utc_datetime = g.schedule_datetime
+        if not utc_datetime:
+            continue
+        local_datetime = zone_datetime(utc_datetime, UTC_TIMEZONE, zone)
+        selected_goals = goals_by_date[local_datetime.date()]
         if g not in selected_goals:
             selected_goals.append(g)
     lines = []
@@ -57,11 +84,12 @@ def format_schedule_text(goals, show_archived=False):
         selected_goals = goals_by_date[goal_date]
         sorted_goals = sort_by_attribute(selected_goals, 'schedule_datetime')
         lines.append(goal_date.strftime(DATESTAMP_FORMAT))
-        lines.extend([g.render_text(indent_depth=1) for g in sorted_goals])
+        lines.extend([g.render_text(
+            zone, indent_depth=1) for g in sorted_goals])
     return '\n'.join(lines)
 
 
-def format_mission_text(goal):
+def format_mission_text(goal, zone, show_archived=False):
     lines = []
 
     def prepare_section(section_name, section_text):
@@ -70,38 +98,38 @@ def format_mission_text(goal):
             lines.append(section_text)
         lines.append('')
 
-    prepare_section('Mission', goal.render_text())
-    prepare_section('Log', format_log_text(goal.sorted_notes))
+    prepare_section('Mission', goal.render_text(zone))
+    prepare_section('Log', format_log_text(goal.sorted_notes, zone))
     prepare_section('Schedule', format_schedule_text(
-        goal.children, show_archived=False))
+        goal.children, zone, show_archived=show_archived))
     prepare_section('Tasks', '\n'.join(prepare_plan_lines(
-        goal.children, indent_depth=1, show_archived=True)))
+        goal.children, zone, indent_depth=1, show_archived=show_archived)))
     return '\n'.join(lines)
 
 
-def prepare_plan_lines(goals, indent_depth, show_archived):
+def prepare_plan_lines(goals, zone, indent_depth, show_archived):
     lines = []
     for g in goals:
         if not show_archived and g.state != GoalState.Pending:
             continue
-        lines.append(g.render_text(indent_depth))
+        lines.append(g.render_text(zone, indent_depth))
         lines.extend(prepare_plan_lines(
-            g.sorted_children, indent_depth + 1, show_archived))
+            g.sorted_children, zone, indent_depth + 1, show_archived))
     return lines
 
 
-def format_log_text(notes):
-    return '\n\n'.join(_.render_text() for _ in notes)
+def format_log_text(notes, zone):
+    return '\n\n'.join(_.render_text(zone) for _ in notes)
 
 
-def parse_goal_text(text):
+def parse_goal_text(text, zone):
     goals = []
     parent_by_indent_depth = {}
     order = 0
     for line in text.splitlines():
         if not line.strip():
             continue
-        goal = Goal.parse_text(line)
+        goal = Goal.parse_text(line, zone)
         goal.order = order = order + 1
         goal_parent = get_parent(goal.indent_depth, parent_by_indent_depth)
         if not hasattr(goal, 'explicit_parents'):
@@ -122,18 +150,18 @@ def parse_goal_text(text):
     return goals
 
 
-def parse_schedule_text(text):
+def parse_schedule_text(text, zone):
     goals = []
     goal_date = None
     for line in text.splitlines():
         line = line.strip()
         try:
-            goal_date = parse_timestamp(line)
+            goal_date = parse_timestamp(line, zone)
         except ValueError:
             pass
         else:
             continue
-        goal = Goal.parse_text(line)
+        goal = Goal.parse_text(line, zone)
         goal_datetime = goal.schedule_datetime
         if not goal_datetime:
             goal.schedule_datetime = goal_date
@@ -144,29 +172,34 @@ def parse_schedule_text(text):
     return goals
 
 
-def parse_mission_text(text):
+def parse_mission_text(text, zone):
     text_by_key = parse_text_by_key(text, '# ', lambda line: line.lower())
+    mission_text = text_by_key.get('mission', '')
+    log_text = text_by_key.get('log', '')
+    schedule_text = text_by_key.get('schedule', '')
+    tasks_text = text_by_key.get('tasks', '')
     try:
-        goal = Goal.parse_text(text_by_key.get('mission', '').splitlines()[0])
+        mission_goal = Goal.parse_text(mission_text.splitlines()[0], zone)
     except (KeyError, IndexError):
         raise ValueError
-    goal.notes = parse_log_text(text_by_key.get('log', ''))
-    goals = parse_goal_text(text_by_key.get('tasks', ''))
+    mission_goal.notes = parse_log_text(log_text, zone)
+    goals = parse_goal_text(tasks_text, zone)
     goal_by_id = {_.id: _ for _ in goals}
-    for g in parse_schedule_text(text_by_key.get('schedule', '')):
+    for g in parse_schedule_text(schedule_text, zone):
         try:
             goal = goal_by_id[g.id]
         except KeyError:
+            g.order = mission_goal.order + 1
             goals.append(g)
         else:
             goal.schedule_datetime = g.schedule_datetime
     for g in goals:
         if not g.parents:
-            g.parents.append(goal)
-    return [goal] + goals
+            g.parents.append(mission_goal)
+    return [mission_goal] + goals
 
 
-def parse_log_text(text):
+def parse_log_text(text, zone):
     notes = []
     note_datetime = None
     note_id = None
@@ -186,7 +219,7 @@ def parse_log_text(text):
     for line in text.splitlines():
         timestamp_text, _, id_text = line.partition(SEPARATOR)
         try:
-            note_datetime = parse_timestamp(timestamp_text)
+            note_datetime = parse_timestamp(timestamp_text, zone)
             note_id = id_text.strip()
         except ValueError:
             note_lines.append(line)
@@ -215,3 +248,14 @@ def update_parent_by_indent_depth(goal, goal_depth, parent_by_indent_depth):
     for indent_depth in bad_depths:
         del parent_by_indent_depth[indent_depth]
     parent_by_indent_depth[goal_depth] = goal
+
+
+def format_summary(zone):
+    lines = []
+    orphan_goals = get_orphan_goals()
+    if orphan_goals:
+        lines.append('%s orphaned' % len(orphan_goals))
+        lines.extend(g.render_text(zone, indent_depth=1) for g in orphan_goals)
+    pending_count = db.query(Goal).filter_by(state=GoalState.Pending).count()
+    lines.append('%s pending' % pending_count)
+    return '\n'.join(lines)
