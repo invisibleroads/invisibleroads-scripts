@@ -1,14 +1,19 @@
 import enum
 import re
+import shutil
 from datetime import datetime
+from invisibleroads_macros.disk import make_folder
 from invisibleroads_macros.security import make_random_string
+from os.path import expanduser, join
 from sqlalchemy import Column, ForeignKey, Table, create_engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.types import DateTime, Enum, Integer, String
 
-from macros import format_timestamp, parse_timestamp, sort_by_attribute
+from macros import (
+    format_timestamp, parse_timestamp, sort_by_attribute, zone_datetime,
+    UTC_TIMEZONE)
 from settings import DATABASE_PATH, ID_LENGTH, INDENT
 
 
@@ -66,7 +71,7 @@ class TextMixin(object):
         if text in (self.old_text, self.text):
             return
         self.text_datetime = DATETIME
-        self.text = text.strip()
+        self.text = text.rstrip()
 
 
 class Goal(IDMixin, TextMixin, Base):
@@ -89,6 +94,22 @@ class Goal(IDMixin, TextMixin, Base):
             return
         self.state_datetime = DATETIME
         self.state = state
+
+    def set_schedule_date(self, date, zone):
+        if date:
+            old_utc_datetime = self.schedule_datetime
+            if old_utc_datetime:
+                old_local_datetime = zone_datetime(
+                    old_utc_datetime, UTC_TIMEZONE, zone)
+                new_local_datetime = datetime.combine(
+                    date, old_local_datetime.time())
+            else:
+                new_local_datetime = date
+            new_utc_datetime = zone_datetime(
+                new_local_datetime, zone, UTC_TIMEZONE)
+        else:
+            new_utc_datetime = None
+        self.schedule_datetime = new_utc_datetime
 
     @classmethod
     def parse_text(Class, text, zone):
@@ -168,6 +189,14 @@ class Note(IDMixin, TextMixin, Base):
             SEPARATOR,
             self.id,
             self.text)
+
+
+def backup_database(zone):
+    target_folder = make_folder(expanduser('~/.invisibleroads'))
+    target_timestamp = format_timestamp(DATETIME, zone)
+    target_path = join(target_folder, target_timestamp + '.sqlite')
+    shutil.copyfile(DATABASE_PATH, target_path)
+    return target_path
 
 
 PREFIX_BY_STATE = {

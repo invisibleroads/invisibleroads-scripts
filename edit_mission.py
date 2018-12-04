@@ -3,7 +3,7 @@ import pytz
 from argparse import ArgumentParser
 
 from macros import call_editor
-from models import Goal, GoalState, db
+from models import Goal, db, backup_database
 from routines import format_mission_text, format_summary, parse_mission_text
 from settings import DEFAULT_TIMEZONE
 
@@ -16,11 +16,7 @@ if __name__ == '__main__':
     args = argument_parser.parse_args()
     zone = pytz.timezone(args.timezone) if args.timezone else DEFAULT_TIMEZONE
     goal_id = args.goal_id
-    if not goal_id:
-        goal = db.query(Goal).filter_by(
-            state=GoalState.Pending).order_by(Goal.order).first()
-    if goal_id or not goal:
-        goal = Goal.get(goal_id)
+    goal = Goal.get(goal_id) if goal_id else None
     while True:
         mission_text = call_editor('mission.md', format_mission_text(
             goal, zone, show_archived=args.all))
@@ -32,4 +28,5 @@ if __name__ == '__main__':
     for goal in goals:
         db.add(goal)
         db.commit()
+    print('backup_path = %s' % backup_database(zone))
     print(format_summary(zone))

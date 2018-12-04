@@ -23,7 +23,9 @@ def get_goals(goal_ids=None, with_notes=False):
         Goal.order).all()
 
 
-def get_roots(goals):
+def get_roots(goals=None):
+    if not goals:
+        goals = get_goals()
     goal_ids = [g.id for g in goals]
 
     def has_parent(g):
@@ -39,6 +41,16 @@ def get_roots(goals):
     return roots
 
 
+def get_parent(goal_depth, parent_by_indent_depth):
+    best_depth = -1
+    best_parent = None
+    for indent_depth, parent in parent_by_indent_depth.items():
+        if goal_depth > indent_depth and indent_depth > best_depth:
+            best_depth = indent_depth
+            best_parent = parent
+    return best_parent
+
+
 def get_orphan_goals():
     graph = nx.Graph()
     pending_goals = db.query(Goal).filter_by(state=GoalState.Pending).all()
@@ -50,8 +62,14 @@ def get_orphan_goals():
     orphan_goals = []
     roots = get_roots(pending_goals)
     for goal in pending_goals:
+        if goal in roots:
+            continue
+        if goal.id not in graph:
+            orphan_goals.append(goal)
         for root in roots:
-            if goal.id in graph and nx.has_path(graph, goal.id, root.id):
+            if root.id not in graph:
+                continue
+            if nx.has_path(graph, goal.id, root.id):
                 break
         else:
             orphan_goals.append(goal)
@@ -99,12 +117,16 @@ def format_mission_text(goal, zone, show_archived=False):
             lines.append(section_text)
         lines.append('')
 
-    prepare_section('Mission', goal.render_text(zone))
-    prepare_section('Log', format_log_text(goal.sorted_notes, zone))
+    if goal:
+        prepare_section('Mission', goal.render_text(zone))
+        prepare_section('Log', format_log_text(goal.sorted_notes, zone))
+        tasks = goal.children
+    else:
+        tasks = get_roots()
     prepare_section('Schedule', format_schedule_text(
-        goal.children, zone, show_archived=show_archived))
+        tasks, zone, show_archived=show_archived))
     prepare_section('Tasks', '\n'.join(prepare_plan_lines(
-        goal.children, zone, indent_depth=1, show_archived=show_archived)))
+        tasks, zone, indent_depth=1, show_archived=show_archived)))
     return '\n'.join(lines)
 
 
@@ -153,26 +175,17 @@ def parse_goal_text(text, zone):
 
 def parse_schedule_text(text, zone):
     goals = []
-    new_local_date = None
+    date = None
     for line in text.splitlines():
         line = line.strip()
         try:
-            new_local_date = datetime.strptime(line, DATESTAMP_FORMAT)
+            date = datetime.strptime(line, DATESTAMP_FORMAT)
         except ValueError:
             pass
         else:
             continue
         goal = Goal.parse_text(line, zone)
-        new_local_datetime = old_local_datetime = zone_datetime(
-            goal.schedule_datetime, UTC_TIMEZONE, zone)
-        if not old_local_datetime:
-            new_local_datetime = new_local_date
-        elif new_local_date:
-            new_local_datetime = new_local_date.replace(
-                hour=old_local_datetime.hour,
-                minute=old_local_datetime.minute)
-        goal.schedule_datetime = zone_datetime(
-            new_local_datetime, zone, UTC_TIMEZONE)
+        goal.set_schedule_date(date, zone)
         goals.append(goal)
     return goals
 
@@ -186,22 +199,25 @@ def parse_mission_text(text, zone):
     try:
         mission_goal = Goal.parse_text(mission_text.splitlines()[0], zone)
     except (KeyError, IndexError):
-        raise ValueError
-    mission_goal.notes = parse_log_text(log_text, zone)
+        mission_goal = None
+    else:
+        mission_goal.notes = parse_log_text(log_text, zone)
     goals = parse_goal_text(tasks_text, zone)
     goal_by_id = {_.id: _ for _ in goals}
     for g in parse_schedule_text(schedule_text, zone):
         try:
             goal = goal_by_id[g.id]
         except KeyError:
-            g.order = mission_goal.order + 1
+            g.order = len(goals)
             goals.append(g)
         else:
             goal.schedule_datetime = g.schedule_datetime
-    for g in goals:
-        if not g.parents:
-            g.parents.append(mission_goal)
-    return [mission_goal] + goals
+    if mission_goal:
+        for g in goals:
+            if not g.parents:
+                g.parents.append(mission_goal)
+        goals.append(mission_goal)
+    return goals
 
 
 def parse_log_text(text, zone):
@@ -232,16 +248,6 @@ def parse_log_text(text, zone):
         process_note(note_id, note_datetime, note_lines)
     process_note(note_id, note_datetime, note_lines)
     return notes
-
-
-def get_parent(goal_depth, parent_by_indent_depth):
-    best_depth = -1
-    best_parent = None
-    for indent_depth, parent in parent_by_indent_depth.items():
-        if goal_depth > indent_depth and indent_depth > best_depth:
-            best_depth = indent_depth
-            best_parent = parent
-    return best_parent
 
 
 def update_parent_by_indent_depth(goal, goal_depth, parent_by_indent_depth):
