@@ -1,6 +1,7 @@
 import networkx as nx
 from collections import defaultdict
 from datetime import datetime
+from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
 
 from macros import (
@@ -9,10 +10,14 @@ from macros import (
 from models import Goal, GoalState, Note, db, SEPARATOR
 
 
-def get_goals(goal_ids=None, with_notes=False):
+def get_goals(terms=None, with_notes=False):
     goal_query = db.query(Goal)
-    if goal_ids:
-        goal_query = goal_query.filter(Goal.id.in_(goal_ids))
+    if terms:
+        text_expressions = [Goal.id.in_(terms)]
+        for term in terms:
+            text_expressions.append(Goal.text.ilike('%' + term + '%'))
+        if text_expressions:
+            goal_query = goal_query.filter(or_(*text_expressions))
     if with_notes:
         goal_query = goal_query.options(joinedload(Goal.notes))
     return goal_query.options(
@@ -24,8 +29,6 @@ def get_goals(goal_ids=None, with_notes=False):
 
 
 def get_roots(goals=None):
-    if not goals:
-        goals = get_goals()
     goal_ids = [g.id for g in goals]
 
     def has_parent(g):
@@ -108,7 +111,7 @@ def format_schedule_text(goals, zone, show_archived=False):
     return '\n'.join(lines)
 
 
-def format_mission_text(goal, zone, show_archived=False):
+def format_mission_text(goals, zone, show_archived=False):
     lines = []
 
     def prepare_section(section_name, section_text):
@@ -117,22 +120,22 @@ def format_mission_text(goal, zone, show_archived=False):
             lines.append(section_text)
         lines.append('')
 
-    if goal:
+    goal_count = len(goals)
+    if goal_count == 1:
+        goal = goals[0]
         prepare_section('Mission', goal.render_text(zone))
         prepare_section('Log', format_log_text(goal.sorted_notes, zone))
-        tasks = goal.children
-    else:
-        tasks = get_roots()
+        goals = goal.children
     prepare_section('Schedule', format_schedule_text(
-        tasks, zone, show_archived=show_archived))
+        goals, zone, show_archived=show_archived))
     prepare_section('Tasks', '\n'.join(prepare_plan_lines(
-        tasks, zone, indent_depth=1, show_archived=show_archived)))
+        goals, zone, indent_depth=1, show_archived=show_archived)))
     return '\n'.join(lines)
 
 
 def prepare_plan_lines(goals, zone, indent_depth, show_archived):
     lines = []
-    for g in goals:
+    for g in get_roots(goals):
         if not show_archived and g.state != GoalState.Pending:
             continue
         lines.append(g.render_text(zone, indent_depth))

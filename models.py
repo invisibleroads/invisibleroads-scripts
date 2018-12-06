@@ -73,8 +73,12 @@ class TextMixin(object):
         self.text_datetime = DATETIME
         self.text = text.rstrip()
 
+    def __repr__(self):
+        return '%s(id=%s, text="%s")' % (
+            self.__class__.__name__, self.id, self.text)
 
-class Goal(IDMixin, TextMixin, Base):
+
+class Goal(TextMixin, IDMixin, Base):
     __tablename__ = 'goal'
     state = Column(Enum(GoalState), default=GoalState.Pending)
     state_datetime = Column(DateTime)
@@ -179,7 +183,7 @@ class Goal(IDMixin, TextMixin, Base):
         return sort_by_attribute(self.children, 'order')
 
 
-class Note(IDMixin, TextMixin, Base):
+class Note(TextMixin, IDMixin, Base):
     __tablename__ = 'note'
     goal_id = Column(String, ForeignKey('goal.id'))
 
