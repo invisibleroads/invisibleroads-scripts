@@ -135,12 +135,12 @@ def format_mission_text(goals, zone, show_archived=False):
 
 def prepare_plan_lines(goals, zone, indent_depth, show_archived):
     lines = []
-    for g in get_roots(goals):
+    for g in sort_by_attribute(get_roots(goals), 'order'):
         if not show_archived and g.state != GoalState.Pending:
             continue
         lines.append(g.render_text(zone, indent_depth))
         lines.extend(prepare_plan_lines(
-            g.sorted_children, zone, indent_depth + 1, show_archived))
+            g.children, zone, indent_depth + 1, show_archived))
     return lines
 
 

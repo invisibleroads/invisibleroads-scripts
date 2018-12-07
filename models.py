@@ -178,10 +178,6 @@ class Goal(TextMixin, IDMixin, Base):
     def sorted_notes(self):
         return sort_by_attribute(self.notes, 'id_datetime')
 
-    @property
-    def sorted_children(self):
-        return sort_by_attribute(self.children, 'order')
-
 
 class Note(TextMixin, IDMixin, Base):
     __tablename__ = 'note'
