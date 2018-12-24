@@ -77,6 +77,6 @@ def get_folder_by_terms(d):
     keys = [k.replace('.terms', '') for k in section if k.endswith('.terms')]
     for key in keys:
         terms = tuple(section[key + '.terms'])
-        folder = section[key + '.folder']
+        folder = expanduser(section[key + '.folder'])
         folder_by_terms[terms] = folder
     return folder_by_terms

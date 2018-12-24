@@ -48,7 +48,7 @@ class EditMissionScript(Script):
             break
         # Commit
         for goal in goals:
-            database.add(goal)
+            database.merge(goal)
             database.commit()
         # Backup
         backup_database(archive_folder, database, timezone)
