@@ -30,6 +30,7 @@ setup(
         'invisibleroads',
         'invisibleroads-macros',
         'networkx',
+        'psycopg2',
         'pytz',
         'sqlalchemy',
     ],
