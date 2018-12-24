@@ -57,7 +57,7 @@ def parse_text_by_key(text, key_prefix, parse_key):
         if line.startswith(key_prefix):
             key = parse_key(line.lstrip(key_prefix))
             continue
-            lines_by_key[key].append(line)
+        lines_by_key[key].append(line)
     return {key: '\n'.join(lines) for key, lines in lines_by_key.items()}
 
 

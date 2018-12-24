@@ -11,7 +11,7 @@ from sqlalchemy.types import DateTime, Enum, Integer, String
 from .macros import (
     format_timestamp, parse_timestamp, sort_by_attribute, zone_datetime,
     UTC_TIMEZONE)
-from .settings import ID_LENGTH, INDENT
+from .settings import get_database_url, ID_LENGTH, INDENT
 
 
 INDENT_PATTERN = re.compile('^\\s+')

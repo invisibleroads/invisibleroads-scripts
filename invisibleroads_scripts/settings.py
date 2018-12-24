@@ -59,8 +59,13 @@ def get_editor_command(d):
 
 
 def get_editor_timezone(d):
-    v = datetime.utcnow().astimezone().tzinfo
-    return pytz.timezone(get_value(d, 'editor', 'timezone', v))
+    try:
+        timezone_name = d['editor']['timezone']
+    except KeyError:
+        timezone = datetime.utcnow().astimezone().tzinfo
+    else:
+        timezone = pytz.timezone(timezone_name)
+    return timezone
 
 
 def get_folder_by_terms(d):

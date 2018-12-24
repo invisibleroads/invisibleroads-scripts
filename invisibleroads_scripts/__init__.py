@@ -41,7 +41,7 @@ class EditMissionScript(Script):
             text = format_mission_text(goals, timezone, show_archived=args.all)
             text = call_editor(editor_command, 'mission.md', text)
             try:
-                goals = parse_mission_text(text, timezone)
+                goals = parse_mission_text(database, text, timezone)
             except ValueError:
                 print('Please specify a mission.')
                 time.sleep(3)
