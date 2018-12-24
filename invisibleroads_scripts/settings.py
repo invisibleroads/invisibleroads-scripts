@@ -1,3 +1,4 @@
+import pytz
 from datetime import datetime
 from invisibleroads_macros.disk import make_folder
 from invisibleroads_macros.exceptions import InvisibleRoadsError
@@ -28,9 +29,8 @@ def get_archive_folder(d):
 
 
 def get_database_url(d):
-    section = d['database']
     try:
-        dialect = section['dialect']
+        dialect = d['database']['dialect']
     except KeyError:
         dialect = 'sqlite'
     if dialect == 'sqlite':
@@ -60,12 +60,15 @@ def get_editor_command(d):
 
 def get_editor_timezone(d):
     v = datetime.utcnow().astimezone().tzinfo
-    return get_value(d, 'editor', 'timezone', v)
+    return pytz.timezone(get_value(d, 'editor', 'timezone', v))
 
 
 def get_folder_by_terms(d):
+    try:
+        section = d['archive']
+    except KeyError:
+        return {}
     folder_by_terms = {}
-    section = d['archive']
     keys = [k.replace('.terms', '') for k in section if k.endswith('.terms')]
     for key in keys:
         terms = tuple(section[key + '.terms'])

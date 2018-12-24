@@ -1,0 +1,3 @@
+
+[invisibleroads]
+edit = invisibleroads_scripts:EditMissionScript

@@ -193,6 +193,11 @@ class Note(TextMixin, IDMixin, Base):
          self.text)
 
 
+def get_database_from_configuration(configuration):
+    database_url = get_database_url(configuration)
+    return configure_database(database_url)
+
+
 def configure_database(database_url):
     engine = create_engine(database_url, echo=False)
     Base.metadata.create_all(engine)
