@@ -38,11 +38,11 @@ def get_database_url(d):
         make_folder(dirname(path))
         return f'{dialect}:///{path}'
     try:
-        username = get_value('database', 'username')
-        password = get_value('database', 'password')
-        host = get_value('database', 'host')
-        port = get_value('database', 'port')
-        name = get_value('database', 'name')
+        username = get_value(d, 'database', 'username')
+        password = get_value(d, 'database', 'password')
+        host = get_value(d, 'database', 'host')
+        port = get_value(d, 'database', 'port')
+        name = get_value(d, 'database', 'name')
     except KeyError as e:
         raise InvisibleRoadsError(f'database {e} required for {dialect}')
     return f'{dialect}://{username}:{password}@{host}:{port}/{name}'
