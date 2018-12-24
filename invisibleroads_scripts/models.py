@@ -1,27 +1,22 @@
 import enum
 import re
-import shutil
 from datetime import datetime
-from invisibleroads_macros.disk import make_folder
 from invisibleroads_macros.security import make_random_string
-from os.path import expanduser, join
 from sqlalchemy import Column, ForeignKey, Table, create_engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.types import DateTime, Enum, Integer, String
 
-from macros import (
+from .macros import (
     format_timestamp, parse_timestamp, sort_by_attribute, zone_datetime,
     UTC_TIMEZONE)
-from settings import DATABASE_PATH, ID_LENGTH, INDENT
+from .settings import ID_LENGTH, INDENT
 
 
-INDENT_PATTERN = re.compile(r'^\s+')
+INDENT_PATTERN = re.compile('^\\s+')
 SEPARATOR = '# '
 DATETIME = datetime.utcnow()
-
-
 Base = declarative_base()
 GoalLink = Table(
     'goal_link', Base.metadata,
@@ -40,22 +35,24 @@ class IDMixin(object):
     id_datetime = Column(DateTime, default=DATETIME)
 
     @classmethod
-    def get(Class, id):
+    def get(Class, database, id):
         if id:
-            instance = db.query(Class).get(id)
+            instance = database.query(Class).get(id)
             if not instance:
                 instance = Class(id=id)
             return instance
-        while True:
-            instance = Class(id=make_random_string(ID_LENGTH))
-            db.add(instance)
-            try:
-                db.flush()
-            except IntegrityError:
-                db.rollback()
-            else:
+        else:
+            while True:
+                instance = Class(id=make_random_string(ID_LENGTH))
+                database.add(instance)
+                try:
+                    database.flush()
+                except IntegrityError:
+                    database.rollback()
+
                 break
-        return instance
+
+            return instance
 
     def __repr__(self):
         return '%s(id=%s)' % (self.__class__.__name__, self.id)
@@ -75,7 +72,7 @@ class TextMixin(object):
 
     def __repr__(self):
         return '%s(id=%s, text="%s")' % (
-            self.__class__.__name__, self.id, self.text)
+         self.__class__.__name__, self.id, self.text)
 
 
 class Goal(TextMixin, IDMixin, Base):
@@ -85,7 +82,8 @@ class Goal(TextMixin, IDMixin, Base):
     schedule_datetime = Column(DateTime)
     order = Column(Integer, default=0)
     children = relationship(
-        'Goal', secondary=GoalLink,
+        'Goal',
+        secondary=GoalLink,
         primaryjoin='Goal.id == goal_link.c.parent_id',
         secondaryjoin='Goal.id == goal_link.c.child_id',
         backref='parents')
@@ -116,12 +114,12 @@ class Goal(TextMixin, IDMixin, Base):
         self.schedule_datetime = new_utc_datetime
 
     @classmethod
-    def parse_text(Class, text, zone):
+    def parse_text(Class, database, text, zone):
         goal_text, _, meta_text = text.partition(SEPARATOR)
         goal_state = Class._parse_goal_state(goal_text)
         schedule_datetime, goal_id = Class._parse_meta_text(meta_text, zone)
         indent_depth = Class._parse_indent_depth(goal_text)
-        goal = Goal.get(goal_id)
+        goal = Goal.get(database, goal_id)
         goal.set_text(goal_text.lstrip(' _+'))
         goal.set_state(goal_state)
         goal.schedule_datetime = schedule_datetime
@@ -133,20 +131,22 @@ class Goal(TextMixin, IDMixin, Base):
         text = text.lstrip()
         if text.startswith('_'):
             return GoalState.Cancelled
-        if text.startswith('+'):
+        elif text.startswith('+'):
             return GoalState.Done
-        return GoalState.Pending
+        else:
+            return GoalState.Pending
 
     @staticmethod
     def _parse_indent_depth(text):
         match = INDENT_PATTERN.match(text)
         if not match:
             return 0
-        return len(match.group())
+        else:
+            return len(match.group())
 
     @staticmethod
     def _parse_meta_text(text, zone):
-        schedule_datetime, goal_id = None, None
+        schedule_datetime, goal_id = (None, None)
         meta_terms = text.split()
         while meta_terms:
             meta_term = meta_terms.pop()
@@ -155,15 +155,17 @@ class Goal(TextMixin, IDMixin, Base):
             except ValueError:
                 if len(meta_term) == ID_LENGTH:
                     goal_id = meta_term
-        return schedule_datetime, goal_id
+
+        return (
+         schedule_datetime, goal_id)
 
     def render_text(self, zone, indent_depth=0):
         return '%s%s%s  %s%s' % (
-            INDENT * indent_depth,
-            PREFIX_BY_STATE[self.state],
-            self.text,
-            SEPARATOR,
-            self._format_meta_text(zone))
+         INDENT * indent_depth,
+         PREFIX_BY_STATE[self.state],
+         self.text,
+         SEPARATOR,
+         self._format_meta_text(zone))
 
     def _format_meta_text(self, zone):
         terms = []
@@ -172,7 +174,7 @@ class Goal(TextMixin, IDMixin, Base):
         if self.notes:
             terms.append('...')
         terms.append(self.id)
-        return ' '.join(terms)
+        return (' ').join(terms)
 
     @property
     def sorted_notes(self):
@@ -185,27 +187,21 @@ class Note(TextMixin, IDMixin, Base):
 
     def render_text(self, zone):
         return '%s  %s%s\n%s' % (
-            format_timestamp(self.id_datetime, zone),
-            SEPARATOR,
-            self.id,
-            self.text)
+         format_timestamp(self.id_datetime, zone),
+         SEPARATOR,
+         self.id,
+         self.text)
 
 
-def backup_database(zone):
-    target_folder = make_folder(expanduser('~/.invisibleroads'))
-    target_timestamp = format_timestamp(DATETIME, zone)
-    target_path = join(target_folder, target_timestamp + '.sqlite')
-    shutil.copyfile(DATABASE_PATH, target_path)
-    return target_path
+def configure_database(database_url):
+    engine = create_engine(database_url, echo=False)
+    Base.metadata.create_all(engine)
+    DatabaseSession = sessionmaker(bind=engine)
+    DatabaseSession.configure(bind=engine)
+    return DatabaseSession()
 
 
 PREFIX_BY_STATE = {
     GoalState.Pending: '',
     GoalState.Cancelled: '_ ',
-    GoalState.Done: '+ ',
-}
-ENGINE = create_engine('sqlite:///%s' % DATABASE_PATH, echo=False)
-Base.metadata.create_all(ENGINE)
-DatabaseSession = sessionmaker(bind=ENGINE)
-DatabaseSession.configure(bind=ENGINE)
-db = DatabaseSession()
+    GoalState.Done: '+ '}

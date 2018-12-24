@@ -2,32 +2,30 @@ import pytz
 from datetime import datetime
 from invisibleroads_macros.disk import TemporaryStorage
 from invisibleroads_macros.iterable import OrderedDefaultDict
-from os import environ
 from os.path import join
 from subprocess import call
 
 
-EDITOR_COMMAND = environ.get('EDITOR', 'vim')
 DATESTAMP_FORMAT = '%Y%m%d'
 TIMESTAMP_FORMAT = DATESTAMP_FORMAT + '-%H%M'
-TIMESTAMP_FORMATS = DATESTAMP_FORMAT, TIMESTAMP_FORMAT
+TIMESTAMP_FORMATS = (DATESTAMP_FORMAT, TIMESTAMP_FORMAT)
 UTC_TIMEZONE = pytz.UTC
 
 
-def call_editor(file_name, file_text):
-    with TemporaryStorage() as storage:
+def call_editor(editor_command, file_name, file_text):
+    with TemporaryStorage() as (storage):
         text_path = join(storage.folder, file_name)
-        with open(text_path, 'wt') as text_file:
+        with open(text_path, 'wt') as (text_file):
             text_file.write(file_text)
             text_file.flush()
-            call([EDITOR_COMMAND, text_path])
-        with open(text_path, 'rt') as text_file:
+            call(editor_command.split() + [text_path])
+        with open(text_path, 'rt') as (text_file):
             file_text = text_file.read()
     return file_text.strip()
 
 
 def zone_datetime(x, source_timezone, target_timezone):
-    return x.replace(tzinfo=source_timezone).astimezone(target_timezone)
+    return (x.replace(tzinfo=source_timezone)).astimezone(target_timezone)
 
 
 def format_timestamp(x, target_timezone, timestamp_format=TIMESTAMP_FORMAT):
@@ -43,10 +41,11 @@ def parse_timestamp(
             x = datetime.strptime(text, timestamp_format)
         except ValueError:
             continue
-        else:
-            break
+
+        break
     else:
         raise ValueError
+
     return zone_datetime(x, source_timezone, UTC_TIMEZONE)
 
 
@@ -58,7 +57,7 @@ def parse_text_by_key(text, key_prefix, parse_key):
         if line.startswith(key_prefix):
             key = parse_key(line.lstrip(key_prefix))
             continue
-        lines_by_key[key].append(line)
+            lines_by_key[key].append(line)
     return {key: '\n'.join(lines) for key, lines in lines_by_key.items()}
 
 

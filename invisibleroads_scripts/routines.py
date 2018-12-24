@@ -1,17 +1,19 @@
 import networkx as nx
 from collections import defaultdict
 from datetime import datetime
+from invisibleroads_macros.disk import make_folder
+from os.path import join
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
 
-from macros import (
+from .macros import (
     parse_text_by_key, parse_timestamp, sort_by_attribute,
     zone_datetime, DATESTAMP_FORMAT, UTC_TIMEZONE)
-from models import Goal, GoalState, Note, db, SEPARATOR
+from .models import Goal, GoalState, Note, SEPARATOR
 
 
-def get_goals(terms=None, with_notes=False):
-    goal_query = db.query(Goal)
+def get_goals(database, terms=None, with_notes=False):
+    goal_query = database.query(Goal)
     if terms:
         text_expressions = [Goal.id.in_(terms)]
         for term in terms:
@@ -54,9 +56,10 @@ def get_parent(goal_depth, parent_by_indent_depth):
     return best_parent
 
 
-def get_orphan_goals():
+def get_orphan_goals(database):
     graph = nx.Graph()
-    pending_goals = db.query(Goal).filter_by(state=GoalState.Pending).all()
+    pending_goals = database.query(Goal).filter_by(
+        state=GoalState.Pending).all()
     for goal in pending_goals:
         for parent in goal.parents:
             if parent.state != GoalState.Pending:
@@ -148,14 +151,14 @@ def format_log_text(notes, zone):
     return '\n\n'.join(_.render_text(zone) for _ in notes)
 
 
-def parse_goal_text(text, zone):
+def parse_goal_text(database, text, zone):
     goals = []
     parent_by_indent_depth = {}
     order = 0
     for line in text.splitlines():
         if not line.strip():
             continue
-        goal = Goal.parse_text(line, zone)
+        goal = Goal.parse_text(database, line, zone)
         goal.order = order = order + 1
         goal_parent = get_parent(goal.indent_depth, parent_by_indent_depth)
         if not hasattr(goal, 'explicit_parents'):
@@ -176,7 +179,7 @@ def parse_goal_text(text, zone):
     return goals
 
 
-def parse_schedule_text(text, zone):
+def parse_schedule_text(database, text, zone):
     goals = []
     date = None
     for line in text.splitlines():
@@ -187,27 +190,28 @@ def parse_schedule_text(text, zone):
             pass
         else:
             continue
-        goal = Goal.parse_text(line, zone)
+        goal = Goal.parse_text(database, line, zone)
         goal.set_schedule_date(date, zone)
         goals.append(goal)
     return goals
 
 
-def parse_mission_text(text, zone):
+def parse_mission_text(database, text, zone):
     text_by_key = parse_text_by_key(text, '# ', lambda line: line.lower())
     mission_text = text_by_key.get('mission', '')
     log_text = text_by_key.get('log', '')
     schedule_text = text_by_key.get('schedule', '')
     tasks_text = text_by_key.get('tasks', '')
     try:
-        mission_goal = Goal.parse_text(mission_text.splitlines()[0], zone)
+        mission_goal = Goal.parse_text(
+            database, mission_text.splitlines()[0], zone)
     except (KeyError, IndexError):
         mission_goal = None
     else:
-        mission_goal.notes = parse_log_text(log_text, zone)
-    goals = parse_goal_text(tasks_text, zone)
+        mission_goal.notes = parse_log_text(database, log_text, zone)
+    goals = parse_goal_text(database, tasks_text, zone)
     goal_by_id = {_.id: _ for _ in goals}
-    for g in parse_schedule_text(schedule_text, zone):
+    for g in parse_schedule_text(database, schedule_text, zone):
         try:
             goal = goal_by_id[g.id]
         except KeyError:
@@ -223,7 +227,7 @@ def parse_mission_text(text, zone):
     return goals
 
 
-def parse_log_text(text, zone):
+def parse_log_text(database, text, zone):
     notes = []
     note_datetime = None
     note_id = None
@@ -234,7 +238,7 @@ def parse_log_text(text, zone):
         note_lines.clear()
         if not note_text:
             return
-        note = Note.get(note_id)
+        note = Note.get(database, note_id)
         if note_datetime:
             note.id_datetime = note_datetime
         note.set_text(note_text)
@@ -264,12 +268,29 @@ def update_parent_by_indent_depth(goal, goal_depth, parent_by_indent_depth):
     parent_by_indent_depth[goal_depth] = goal
 
 
-def format_summary(zone):
+def backup_database(target_folder, database, timezone, terms=None):
+    goals = get_goals(database, terms, with_notes=True)
+    text = format_mission_text(goals, timezone, show_archived=True)
+    target_folder = make_folder(target_folder)
+    target_name = ' '.join(terms) if terms else 'goals'
+    target_path = join(target_folder, f'{target_name}.md')
+    open(target_path, 'wt').write(text)
+    for goal in goals:
+        if not goal.notes:
+            continue
+        text = format_mission_text([goal], timezone, show_archived=True)
+        target_name = goal.id
+        target_path = join(target_folder, f'{target_name}.md')
+        open(target_path, 'wt').write(text)
+
+
+def format_summary(database, zone):
     lines = []
-    orphan_goals = get_orphan_goals()
+    orphan_goals = get_orphan_goals(database)
     if orphan_goals:
         lines.append('%s orphaned' % len(orphan_goals))
         lines.extend(g.render_text(zone, indent_depth=1) for g in orphan_goals)
-    pending_count = db.query(Goal).filter_by(state=GoalState.Pending).count()
+    pending_count = database.query(Goal).filter_by(
+        state=GoalState.Pending).count()
     lines.append('%s pending' % pending_count)
     return '\n'.join(lines)
