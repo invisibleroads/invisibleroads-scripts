@@ -2,11 +2,26 @@ InvisibleRoads Scripts
 ======================
 Here are command-line scripts for managing your goals. ::
 
-   pip install -U invisibleroads-scripts
-   invisibleroads edit
-   invisibleroads edit -A            # Include archived goals
-   invisibleroads edit your-keyword  # Filter by keyword
-   invisibleroads edit your-goal-id  # Focus on specific goal
+    pip install -U invisibleroads-scripts
+    invisibleroads edit
+        Eat
+        Exercise
+            Do 10 pullups
+            Do 20 pushups
+            Do 30 jumps
+        Sleep
+    invisibleroads edit -A            # Include archived goals
+    invisibleroads edit your-keyword  # Filter by keyword
+    invisibleroads edit your-goal-id  # Focus on specific goal
+        # Mission
+            Specify a goal
+        # Log
+            Record notes
+        # Schedule
+        20181225
+            Schedule goals by date using YYYYMMDD
+        # Tasks
+            List remaining tasks using nested indent
 
 Script Configuration
 --------------------
