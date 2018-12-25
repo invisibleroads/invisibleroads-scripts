@@ -1,6 +1,6 @@
 2.0
 ---
-- Support SSH
+- Support remote database
 
 1.0
 ---
