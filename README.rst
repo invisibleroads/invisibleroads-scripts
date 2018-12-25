@@ -38,15 +38,30 @@ Here are the steps if you would like to configure a remote database. ::
       sudo postgresql-setup --initdb --unit postgresql
       # Start database server
       sudo systemctl start postgresql
-      # Open port 5432
-      sudo firewall-cmd --add-port=5432/tcp
 
       # Add database user
       sudo -s -u postgres
-      psql
-         \password postgres
-         CREATE USER your-username WITH PASSWORD 'your-password';
-         CREATE DATABASE your-database OWNER your-username;
+         psql
+            CREATE USER your-username WITH PASSWORD 'your-password';
+            CREATE DATABASE your-database OWNER your-username;
+
+      # Configure database access
+      sudo -s -u postgres
+         psql
+            \password postgres
+            show hba_file;
+      sudo vim /var/lib/pgsql/data/pg_hba.conf
+         host your-database your-username your-ipv4 md5
+         host your-database your-username your-ipv6 md5
+         # host your-database your-username 0.0.0.0/0 md5
+         # host your-database your-username ::0/0 md5
+      sudo vim /var/lib/pgsql/data/postgresql.conf
+         listen_addresses = 'your-ip'
+         # listen_addresses = '*'
+      sudo systemctl restart postgresql
+
+      # Open database port
+      sudo firewall-cmd --add-port=5432/tcp
 
       # Start database server on boot (optional)
       sudo systemctl enable postgresql
