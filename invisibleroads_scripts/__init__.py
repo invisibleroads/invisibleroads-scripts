@@ -47,6 +47,7 @@ class EditMissionScript(Script):
                 time.sleep(3)
             break
         # Commit
+        database = get_database_from_configuration(c)
         for goal in goals:
             database.merge(goal)
             database.commit()
