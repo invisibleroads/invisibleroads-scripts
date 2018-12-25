@@ -11,7 +11,7 @@ DESCRIPTION = '\n\n'.join(open(join(FOLDER, x)).read().strip() for x in [
     'README.rst', 'CHANGES.rst'])
 setup(
     name='invisibleroads-scripts',
-    version='2.0.0',
+    version='2.0.1',
     description='Command-line scripts for managing your goals',
     long_description=DESCRIPTION,
     classifiers=[
@@ -24,7 +24,7 @@ setup(
     url='https://github.com/invisibleroads/invisibleroads-scripts',
     keywords='invisibleroads',
     packages=find_packages(),
-    include_package_data=False,
+    include_package_data=True,
     zip_safe=True,
     install_requires=[
         'invisibleroads',
