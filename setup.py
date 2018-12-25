@@ -15,7 +15,7 @@ setup(
     description='Command-line scripts for managing your goals',
     long_description=DESCRIPTION,
     classifiers=[
-        'Programming Language :: Python',
+        'Programming Language :: Python :: 3',
         'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent',
     ],
