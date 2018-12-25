@@ -2,6 +2,16 @@ InvisibleRoads Scripts
 ======================
 Here are command-line scripts for managing your goals. ::
 
+   pip install -U invisibleroads-scripts
+   invisibleroads edit
+   invisibleroads edit -A            # Include archived goals
+   invisibleroads edit your-keyword  # Filter by keyword
+   invisibleroads edit your-goal-id  # Focus on specific goal
+
+Script Configuration
+--------------------
+Here are optional steps to configure your scripts. ::
+
     vim ~/.invisibleroads/configuration.ini
         [editor]
         command = vim
