@@ -39,7 +39,11 @@ class EditMissionScript(Script):
         # Edit
         while True:
             text = format_mission_text(goals, timezone, show_archived=args.all)
+
+            database.close()
             text = call_editor(editor_command, 'mission.md', text)
+            database = get_database_from_configuration(c)
+
             try:
                 goals = parse_mission_text(database, text, timezone)
             except ValueError:
@@ -47,7 +51,6 @@ class EditMissionScript(Script):
                 time.sleep(3)
             break
         # Commit
-        database = get_database_from_configuration(c)
         for goal in goals:
             database.merge(goal)
             database.commit()
