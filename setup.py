@@ -11,7 +11,7 @@ DESCRIPTION = '\n\n'.join(open(join(FOLDER, x)).read().strip() for x in [
     'README.rst', 'CHANGES.rst'])
 setup(
     name='invisibleroads-scripts',
-    version='2.0.5',
+    version='2.0.6',
     description='Command-line scripts for managing your goals',
     long_description=DESCRIPTION,
     classifiers=[
