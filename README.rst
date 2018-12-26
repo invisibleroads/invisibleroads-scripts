@@ -4,7 +4,10 @@ Here are command-line scripts for managing your goals. ::
 
     pip install -U invisibleroads-scripts
     invisibleroads edit
-        Eat
+        Do
+            Mark pending
+            _ Mark cancelled
+            + Mark done
         Exercise
             Do 10 pullups
             Do 20 pushups
