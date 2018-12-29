@@ -1,1 +1,2 @@
+Save backup of edits in case we cannot connect to the database
 Update parse_mission_text so that it does not need to use database
