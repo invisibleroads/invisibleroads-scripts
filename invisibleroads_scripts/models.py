@@ -75,6 +75,21 @@ class TextMixin(object):
          self.__class__.__name__, self.id, self.text)
 
 
+class GoalCache(object):
+
+    def __init__(self, database):
+        self.database = database
+        self.goal_by_id = {}
+
+    def get(self, id):
+        try:
+            return self.goal_by_id[id]
+        except KeyError:
+            goal = Goal.get(self.database, id)
+            self.goal_by_id[id] = goal
+            return goal
+
+
 class Goal(TextMixin, IDMixin, Base):
     __tablename__ = 'goal'
     state = Column(Enum(GoalState), default=GoalState.Pending)
@@ -114,12 +129,12 @@ class Goal(TextMixin, IDMixin, Base):
         self.schedule_datetime = new_utc_datetime
 
     @classmethod
-    def parse_text(Class, database, text, zone):
+    def parse_text(Class, goal_cache, text, zone):
         goal_text, _, meta_text = text.partition(SEPARATOR)
         goal_state = Class._parse_goal_state(goal_text)
         schedule_datetime, goal_id = Class._parse_meta_text(meta_text, zone)
         indent_depth = Class._parse_indent_depth(goal_text)
-        goal = Goal.get(database, goal_id)
+        goal = goal_cache.get(goal_id)
         goal.set_text(goal_text.lstrip(' _+'))
         goal.set_state(goal_state)
         goal.schedule_datetime = schedule_datetime

@@ -9,7 +9,7 @@ from sqlalchemy.orm import joinedload
 from .macros import (
     parse_text_by_key, parse_timestamp, sort_by_attribute,
     zone_datetime, DATESTAMP_FORMAT, UTC_TIMEZONE)
-from .models import Goal, GoalState, Note, SEPARATOR
+from .models import Goal, GoalCache, GoalState, Note, SEPARATOR
 
 
 def get_goals(database, terms=None, with_notes=False):
@@ -151,14 +151,14 @@ def format_log_text(notes, zone):
     return '\n\n'.join(_.render_text(zone) for _ in notes)
 
 
-def parse_goal_text(database, text, zone):
-    goals = []
+def parse_goal_text(goal_cache, text, zone):
+    goal_by_id = {}
     parent_by_indent_depth = {}
     order = 0
     for line in text.splitlines():
         if not line.strip():
             continue
-        goal = Goal.parse_text(database, line, zone)
+        goal = Goal.parse_text(goal_cache, line, zone)
         goal.order = order = order + 1
         goal_parent = get_parent(goal.indent_depth, parent_by_indent_depth)
         if not hasattr(goal, 'explicit_parents'):
@@ -167,19 +167,19 @@ def parse_goal_text(database, text, zone):
             goal.explicit_parents.append(goal_parent)
         update_parent_by_indent_depth(
             goal, goal.indent_depth, parent_by_indent_depth)
-        goals.append(goal)
-    goal_ids = [goal.id for goal in goals]
-    for goal in goals:
-        goal.implicit_parents = []
+        goal_by_id[goal.id] = goal
+    for goal in goal_by_id.values():
+        if not hasattr(goal, 'implicit_parents'):
+            goal.implicit_parents = []
         for parent in goal.parents:
-            if parent.id in goal_ids:
+            if parent.id in goal_by_id:
                 continue
             goal.implicit_parents.append(parent)
         goal.parents = goal.explicit_parents + goal.implicit_parents
-    return goals
+    return goal_by_id.values()
 
 
-def parse_schedule_text(database, text, zone):
+def parse_schedule_text(goal_cache, text, zone):
     goals = []
     date = None
     for line in text.splitlines():
@@ -190,13 +190,14 @@ def parse_schedule_text(database, text, zone):
             pass
         else:
             continue
-        goal = Goal.parse_text(database, line, zone)
+        goal = Goal.parse_text(goal_cache, line, zone)
         goal.set_schedule_date(date, zone)
         goals.append(goal)
     return goals
 
 
 def parse_mission_text(database, text, zone):
+    goal_cache = GoalCache(database)
     text_by_key = parse_text_by_key(text, '# ', lambda line: line.lower())
     mission_text = text_by_key.get('mission', '')
     log_text = text_by_key.get('log', '')
@@ -204,14 +205,14 @@ def parse_mission_text(database, text, zone):
     tasks_text = text_by_key.get('tasks', '')
     try:
         mission_goal = Goal.parse_text(
-            database, mission_text.splitlines()[0], zone)
+            goal_cache, mission_text.splitlines()[0], zone)
     except (KeyError, IndexError):
         mission_goal = None
     else:
         mission_goal.notes = parse_log_text(database, log_text, zone)
-    goals = parse_goal_text(database, tasks_text, zone)
+    goals = parse_goal_text(goal_cache, tasks_text, zone)
     goal_by_id = {_.id: _ for _ in goals}
-    for g in parse_schedule_text(database, schedule_text, zone):
+    for g in parse_schedule_text(goal_cache, schedule_text, zone):
         try:
             goal = goal_by_id[g.id]
         except KeyError:
