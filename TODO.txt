@@ -1,1 +1,2 @@
-Update parse_mission_text so that it does not need to use database
+Render database using markdown
+Allow notes without goals

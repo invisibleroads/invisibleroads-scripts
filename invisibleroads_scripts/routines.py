@@ -176,7 +176,7 @@ def parse_goal_text(goal_cache, text, zone):
                 continue
             goal.implicit_parents.append(parent)
         goal.parents = goal.explicit_parents + goal.implicit_parents
-    return goal_by_id.values()
+    return list(goal_by_id.values())
 
 
 def parse_schedule_text(goal_cache, text, zone):
