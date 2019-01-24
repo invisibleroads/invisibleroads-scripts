@@ -7,11 +7,9 @@ def test_parse_mission_text():
     assert parse_mission_text(MISSION_TEXTS[0]) == {}
     assert parse_mission_text(MISSION_TEXTS[1]) == {
         0: Goal(id=0, text='Do')}
-    """
     assert parse_mission_text(MISSION_TEXTS[2]) == {
         'A': Goal(id='A', text='Do')}
     # Check that a goal cannot be a child of itself
-    """
 
 
 def test_format_mission_text():

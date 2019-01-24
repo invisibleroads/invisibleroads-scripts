@@ -25,7 +25,12 @@ class Goal(object):
     def parse_text(Class, text):
         goal_text, _, meta_text = text.partition(META_SEPARATOR)
         goal_text = goal_text.strip()
-        return Class(id=Class._get_next_id(), text=goal_text)
+        goal_id = Class._parse_meta_text(meta_text)
+        return Class(id=goal_id or Class._get_next_id(), text=goal_text)
+
+    @staticmethod
+    def _parse_meta_text(text):
+        return text.strip()
 
     def format_text(self):
         return '%s  %s%s' % (

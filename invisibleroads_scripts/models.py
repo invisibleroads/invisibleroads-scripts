@@ -14,6 +14,7 @@ from .macros import (
 from .settings import get_database_url, ID_LENGTH, INDENT
 
 
+SEPARATOR = '# '
 INDENT_PATTERN = re.compile('^\\s+')
 DATETIME = datetime.utcnow()
 Base = declarative_base()
@@ -160,7 +161,7 @@ class Goal(TextMixin, IDMixin, Base):
 
     @staticmethod
     def _parse_meta_text(text, zone):
-        schedule_datetime, goal_id = (None, None)
+        schedule_datetime, goal_id = None, None
         meta_terms = text.split()
         while meta_terms:
             meta_term = meta_terms.pop()
@@ -169,9 +170,7 @@ class Goal(TextMixin, IDMixin, Base):
             except ValueError:
                 if len(meta_term) == ID_LENGTH:
                     goal_id = meta_term
-
-        return (
-         schedule_datetime, goal_id)
+        return schedule_datetime, goal_id
 
     def render_text(self, zone, indent_depth=0):
         return '%s%s%s  %s%s' % (
