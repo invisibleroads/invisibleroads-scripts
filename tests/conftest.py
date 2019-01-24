@@ -3,5 +3,15 @@ from os.path import dirname, join
 
 FOLDER = dirname(__file__)
 EXAMPLES_FOLDER = join(FOLDER, 'examples')
-BLANK_MISSION_TEXT = open(join(EXAMPLES_FOLDER, 'blank.md')).read()
-FULL_MISSION_TEXT = open(join(EXAMPLES_FOLDER, 'full.md')).read()
+
+
+def load_text(file_name):
+    return open(join(EXAMPLES_FOLDER, file_name)).read()
+
+
+MISSION_TEXTS = [
+    load_text('mission0.md'),
+    load_text('mission1.md'),
+    load_text('mission2.md'),
+    load_text('missionX.md'),
+]

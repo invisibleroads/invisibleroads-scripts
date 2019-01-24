@@ -15,7 +15,6 @@ from .settings import get_database_url, ID_LENGTH, INDENT
 
 
 INDENT_PATTERN = re.compile('^\\s+')
-SEPARATOR = '# '
 DATETIME = datetime.utcnow()
 Base = declarative_base()
 GoalLink = Table(
@@ -189,7 +188,7 @@ class Goal(TextMixin, IDMixin, Base):
         if self.notes:
             terms.append('...')
         terms.append(self.id)
-        return (' ').join(terms)
+        return ' '.join(terms)
 
     @property
     def sorted_notes(self):
