@@ -14,5 +14,6 @@ MISSION_TEXTS = [
     load('mission1.md'),
     load('mission2.md'),
     load('mission3.md'),
+    load('mission4.md'),
     load('missionX.md'),
 ]
