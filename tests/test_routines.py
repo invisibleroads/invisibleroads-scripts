@@ -10,6 +10,7 @@ def test_parse_mission_text():
     """
     assert parse_mission_text(MISSION_TEXTS[2]) == {
         'A': Goal(id='A', text='Do')}
+    # Check that a goal cannot be a child of itself
     """
 
 
