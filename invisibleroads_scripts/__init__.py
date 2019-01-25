@@ -55,7 +55,9 @@ class EditMissionScript(Script):
             database.merge(goal)
             database.commit()
         # Backup
+        """
         backup_database(archive_folder, database, timezone)
         for terms, folder in folder_by_terms.items():
             backup_database(folder, database, timezone, terms)
         print(format_summary(database, timezone))
+        """

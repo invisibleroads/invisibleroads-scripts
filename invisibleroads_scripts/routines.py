@@ -129,8 +129,10 @@ def format_mission_text(goals, zone, show_archived=False):
         prepare_section('Mission', goal.render_text(zone))
         prepare_section('Log', format_log_text(goal.sorted_notes, zone))
         goals = goal.children
+    """
     prepare_section('Schedule', format_schedule_text(
         goals, zone, show_archived=show_archived))
+    """
     prepare_section('Tasks', '\n'.join(prepare_plan_lines(
         goals, zone, indent_depth=1, show_archived=show_archived)))
     return '\n'.join(lines)
@@ -235,7 +237,7 @@ def parse_log_text(database, text, zone):
     note_lines = []
 
     def process_note(note_id, note_datetime, note_lines):
-        note_text = '\n'.join(note_lines).strip()
+        note_text = '\n'.join(note_lines).rstrip()
         note_lines.clear()
         if not note_text:
             return
